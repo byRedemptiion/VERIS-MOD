@@ -30,6 +30,7 @@ public sealed class EventCardViewModel : ObservableObject
         IconBg = Frozen(def.IconFg, 0x26);
         IconBorder = Frozen(def.IconFg, 0x66);
         IconFg = Frozen(def.IconFg);
+        IconGeometry = IconPaths.For(def.Id);
     }
 
     public EventDef Def { get; }
@@ -40,6 +41,7 @@ public sealed class EventCardViewModel : ObservableObject
     public Brush IconBg { get; }
     public Brush IconBorder { get; }
     public Brush IconFg { get; }
+    public Geometry IconGeometry { get; }
 
     public ObservableCollection<SoundItem> Sounds { get; }
 

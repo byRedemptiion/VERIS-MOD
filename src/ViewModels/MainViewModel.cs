@@ -96,9 +96,16 @@ public sealed class MainViewModel : ObservableObject
         UpdateNowCommand = new AsyncRelayCommand(UpdateNowAsync, () => _update != null && !IsUpdating, OnError);
         DismissUpdateCommand = new RelayCommand(() => { _update = null; RefreshUpdateState(); });
         CheckUpdateCommand = new AsyncRelayCommand(() => CheckForUpdateAsync(manual: true), () => !IsUpdating, OnError);
+        OpenColorPickerCommand = new RelayCommand(() => ChooseTheme("custom"));
+        CloseColorPickerCommand = new RelayCommand(() => { IsColorPickerOpen = false; SaveThemeSettings(); });
+        PickPresetColorCommand = new RelayCommand(p => { if (p is string hex) CustomHex = hex; });
+        FinishOnboardingCommand = new RelayCommand(FinishOnboarding);
+        ApplyVerisVoiceCommand = new AsyncRelayCommand(ApplyVerisVoiceAsync, () => CanApplyAnything && !IsBusy, OnError);
+        _preview.Ended += () => IsPlaying = false;
 
         foreach (ThemePalette palette in ThemeService.All)
             Themes.Add(new ThemeOption(palette));
+        Themes.Add(new ThemeOption(ThemeService.BuildCustom(ThemeService.CustomAccent)));
         SyncThemeOptions();
 
         // Initialisation légère (fichiers locaux uniquement) : la fenêtre apparaît tout de suite.
@@ -202,21 +209,129 @@ public sealed class MainViewModel : ObservableObject
     {
         if (parameter is not string key) return;
         ThemeService.Apply(key);
+        if (key == "custom") IsColorPickerOpen = true;
         SyncThemeOptions();
+        SaveThemeSettings();
+        NotifyCustomColor();
+    }
 
+    private static void SaveThemeSettings()
+    {
         try
         {
             AppSettings settings = ConfigService.ReadSettings();
             settings.Theme = ThemeService.Current.Key;
+            settings.CustomAccent = ThemeService.CustomAccent;
             ConfigService.SaveSettings(settings);
         }
         catch { /* le thème reste appliqué pour cette session */ }
     }
 
+    // ---------------------------------------------------------------- couleur perso
+
+    public string[] PresetColors { get; } =
+    {
+        "#7C4DFF", "#2DA8FF", "#22C58B", "#F0509B", "#F59E0B", "#EF4444",
+        "#14B8A6", "#A3E635", "#F97316", "#EC4899", "#8B5CF6", "#94A3B8",
+    };
+
+    private bool _isColorPickerOpen;
+    public bool IsColorPickerOpen { get => _isColorPickerOpen; set => Set(ref _isColorPickerOpen, value); }
+
+    /// <summary>Code couleur saisi (#RRGGBB). Une valeur valide est appliquée en direct.</summary>
+    public string CustomHex
+    {
+        get => ThemeService.CustomAccent;
+        set
+        {
+            string? hex = ThemeService.NormalizeHex(value);
+            if (hex == null) return;                       // saisie incomplète : on attend
+            ThemeService.CustomAccent = hex;
+            ThemeService.Apply("custom");
+            SyncThemeOptions();
+            NotifyCustomColor();
+        }
+    }
+
+    public double CustomR { get => ChannelOf(0); set => SetChannel(0, value); }
+    public double CustomG { get => ChannelOf(1); set => SetChannel(1, value); }
+    public double CustomB { get => ChannelOf(2); set => SetChannel(2, value); }
+
+    private static double ChannelOf(int index)
+    {
+        string h = ThemeService.CustomAccent.TrimStart('#');
+        return Convert.ToInt32(h.Substring(index * 2, 2), 16);
+    }
+
+    private void SetChannel(int index, double value)
+    {
+        int[] c = { (int)ChannelOf(0), (int)ChannelOf(1), (int)ChannelOf(2) };
+        c[index] = (int)Math.Clamp(Math.Round(value), 0, 255);
+        CustomHex = "#" + c[0].ToString("X2") + c[1].ToString("X2") + c[2].ToString("X2");
+    }
+
+    private void NotifyCustomColor()
+    {
+        OnPropertyChanged(nameof(CustomHex));
+        OnPropertyChanged(nameof(CustomR));
+        OnPropertyChanged(nameof(CustomG));
+        OnPropertyChanged(nameof(CustomB));
+    }
+
+    // ---------------------------------------------------------------- notifications discrètes (toasts)
+
+    /// <summary>Demande à la fenêtre d'afficher un message qui disparaît tout seul.</summary>
+    public event Action<string>? ToastRequested;
+
+    private void ShowToast(string message) => ToastRequested?.Invoke(message);
+
+    // ---------------------------------------------------------------- écran de bienvenue
+
+    private bool _isOnboardingOpen;
+    private TaskCompletionSource<bool>? _onboardingDone;
+
+    public bool IsOnboardingOpen { get => _isOnboardingOpen; private set => Set(ref _isOnboardingOpen, value); }
+
+    /// <summary>Affiche l'écran de bienvenue au tout premier lancement ; rend la main quand il est fermé.</summary>
+    public Task ShowOnboardingAsync()
+    {
+        try
+        {
+            if (ConfigService.ReadSettings().OnboardingDone) return Task.CompletedTask;
+        }
+        catch { return Task.CompletedTask; }
+
+        _onboardingDone = new TaskCompletionSource<bool>();
+        IsOnboardingOpen = true;
+        return _onboardingDone.Task;
+    }
+
+    private void FinishOnboarding()
+    {
+        try
+        {
+            AppSettings settings = ConfigService.ReadSettings();
+            settings.OnboardingDone = true;
+            ConfigService.SaveSettings(settings);
+        }
+        catch { }
+
+        IsOnboardingOpen = false;
+        _onboardingDone?.TrySetResult(true);
+    }
+
+    // ---------------------------------------------------------------- aperçu sonore (mascotte animée)
+
+    private bool _isPlaying;
+    public bool IsPlaying { get => _isPlaying; private set => Set(ref _isPlaying, value); }
+
     private void SyncThemeOptions()
     {
         foreach (ThemeOption option in Themes)
+        {
             option.IsSelected = option.Key == ThemeService.Current.Key;
+            if (option.Key == "custom") option.SetAccent(ThemeService.CustomAccent);
+        }
 
         OnPropertyChanged(nameof(ThemeName));
         OnPropertyChanged(nameof(Badge));
@@ -283,6 +398,11 @@ public sealed class MainViewModel : ObservableObject
     public ICommand UpdateNowCommand { get; }
     public ICommand DismissUpdateCommand { get; }
     public ICommand CheckUpdateCommand { get; }
+    public ICommand OpenColorPickerCommand { get; }
+    public ICommand CloseColorPickerCommand { get; }
+    public ICommand PickPresetColorCommand { get; }
+    public ICommand FinishOnboardingCommand { get; }
+    public ICommand ApplyVerisVoiceCommand { get; }
 
     private bool CanApplyAnything =>
         _snapshot.Core != null && _snapshot.ExternalMod == null && _configOk;
@@ -487,8 +607,16 @@ public sealed class MainViewModel : ObservableObject
     private void TestSound(EventCardViewModel card)
     {
         if (card.SelectedSound == null) return;
-        try { _preview.Play(card.SelectedSound.Path, card.VolumeInt); }
-        catch (Exception ex) { _dialogs.Error(ex.Message, "VERIS MOD — Test du son"); }
+        try
+        {
+            _preview.Play(card.SelectedSound.Path, card.VolumeInt);
+            IsPlaying = true;
+        }
+        catch (Exception ex)
+        {
+            IsPlaying = false;
+            _dialogs.Error(ex.Message, "VERIS MOD — Test du son");
+        }
     }
 
     // ---------------------------------------------------------------- écritures (config + hooks)
@@ -509,7 +637,7 @@ public sealed class MainViewModel : ObservableObject
     {
         RefreshCards();
         await ScanAsync();
-        if (message != null) _dialogs.Info(message, "VERIS MOD");
+        if (message != null) ShowToast(message);
     }
 
     private static void ClearPausedFlag() => SetPausedFlag(false);
@@ -689,8 +817,7 @@ public sealed class MainViewModel : ObservableObject
         {
             ConfigService.ClearAll();
             AfterConfigChange();
-            _dialogs.Info("Tous les sons utilisent de nouveau Discord natif.\n" +
-                          "La bibliothèque VERIS MOD personnelle est conservée.", "VERIS MOD");
+            ShowToast("Tous les sons utilisent de nouveau Discord natif. Ta bibliothèque est conservée.");
         }
         catch (Exception ex) { _dialogs.Error(ex.Message, "VERIS MOD — restauration refusée"); }
     }
@@ -861,6 +988,83 @@ public sealed class MainViewModel : ObservableObject
         await FinishAsync("VERIS MOD a été retiré de Discord. Les fichiers d'origine sont restaurés.");
     }
 
+    // ---------------------------------------------------------------- voix V.E.R.I.S
+
+    private static readonly (string Card, string Sound)[] VerisVoice =
+    {
+        ("message1",     "builtin:veris_message"),
+        ("user_join",    "builtin:veris_join"),
+        ("user_leave",   "builtin:veris_leave"),
+        ("call_calling", "builtin:veris_calling"),
+        ("reconnect",    "builtin:veris_reconnect"),
+        ("disconnect",   "builtin:veris_disconnect"),
+        ("mute",         "builtin:veris_mute"),
+        ("unmute",       "builtin:veris_unmute"),
+        ("deafen",       "builtin:veris_deafen"),
+        ("undeafen",     "builtin:veris_undeafen"),
+        ("call_ringing", "builtin:veris_ringing"),
+    };
+
+    /// <summary>Applique la voix V.E.R.I.S aux 11 événements d'un seul clic.</summary>
+    private async Task ApplyVerisVoiceAsync()
+    {
+        var picks = new List<(string Id, SoundItem Sound)>();
+        foreach (var (cardId, soundId) in VerisVoice)
+        {
+            SoundItem sound = Sounds.FirstOrDefault(x => x.Id == soundId)
+                ?? throw new InvalidOperationException("Un fichier de la voix V.E.R.I.S est introuvable (dossier « sounds » à côté de l'application). Réinstalle VERIS MOD.");
+            AudioFiles.Validate(sound.Path);
+            picks.Add((cardId, sound));
+        }
+
+        if (!_dialogs.Confirm(
+                "Activer la voix V.E.R.I.S ?\n\n" +
+                "Les 11 événements (messages, micro, casque, appels…) seront annoncés par la voix du robot. " +
+                "Tu peux tout annuler avec « Tout restaurer ».",
+                "VERIS MOD — Voix V.E.R.I.S")) return;
+
+        // Les menus de chaque carte montrent le son choisi.
+        foreach (var (id, sound) in picks)
+        {
+            EventCardViewModel? card = AllCards.FirstOrDefault(c => c.Id == id);
+            if (card == null) continue;
+            card.SelectedSound = sound;
+            card.Volume = 100;
+        }
+
+        List<SoundItem> sounds = Sounds.ToList();
+        await ApplyAsync(() =>
+        {
+            try { ConfigService.RepairConfiguredFiles(sounds); } catch { }
+            foreach (var (id, sound) in picks) ConfigService.SetTarget(id, sound, 100);
+            ClearPausedFlag();
+        });
+        ShowToast("Voix V.E.R.I.S activée sur les 11 événements.");
+    }
+
+    // ---------------------------------------------------------------- glisser-déposer
+
+    /// <summary>Un fichier audio glissé sur la fenêtre : ajouté à la bibliothèque, et sélectionné sur la carte visée.</summary>
+    public void HandleDroppedFile(string path, EventCardViewModel? card)
+    {
+        try
+        {
+            string name = LibraryService.Import(path);
+            ReloadSounds();
+            SoundItem? added = Sounds.FirstOrDefault(x => x.Kind == SoundKind.User && x.Name == name);
+            if (card != null && added != null)
+            {
+                card.SelectedSound = added;
+                ShowToast($"« {name} » est choisi pour « {card.Title} ». Clique sur Appliquer.");
+            }
+            else
+            {
+                ShowToast($"« {name} » est ajouté à la bibliothèque.");
+            }
+        }
+        catch (Exception ex) { _dialogs.Error(ex.Message, "VERIS MOD — ajout refusé"); }
+    }
+
     private void AddSound()
     {
         try
@@ -870,7 +1074,7 @@ public sealed class MainViewModel : ObservableObject
 
             string name = LibraryService.Import(path);
             ReloadSounds();
-            _dialogs.Info($"« {name} » est disponible dans tous les menus.", "VERIS MOD — Bibliothèque");
+            ShowToast($"« {name} » est disponible dans tous les menus.");
         }
         catch (Exception ex) { _dialogs.Error(ex.Message, "VERIS MOD — ajout refusé"); }
     }
@@ -944,14 +1148,18 @@ public sealed class ThemeOption : ObservableObject
     {
         Key = palette.Key;
         Name = palette.Name;
-        AccentBrush = palette.AccentGradient is { Length: >= 2 } ? Make(palette.AccentGradient[0]) : Make(palette.Accent);
+        _accentBrush = palette.AccentGradient is { Length: >= 2 } ? Make(palette.AccentGradient[0]) : Make(palette.Accent);
         BgBrush = Make(palette.Bg);
     }
 
     public string Key { get; }
     public string Name { get; }
-    public Brush AccentBrush { get; }
+    private Brush _accentBrush;
+    public Brush AccentBrush { get => _accentBrush; private set => Set(ref _accentBrush, value); }
     public Brush BgBrush { get; }
+
+    /// <summary>Met à jour la pastille « Couleur perso » quand l'utilisateur change de couleur.</summary>
+    public void SetAccent(string hex) => AccentBrush = Make(hex);
 
     public bool IsSelected { get => _isSelected; set => Set(ref _isSelected, value); }
 
@@ -967,12 +1175,17 @@ public sealed class PreviewPlayer
 {
     private MediaPlayer? _player;
 
+    /// <summary>Déclenché quand l'aperçu se termine (ou échoue).</summary>
+    public event Action? Ended;
+
     public void Play(string file, int volume)
     {
         AudioFiles.Validate(file);
         Stop();
 
         _player = new MediaPlayer();
+        _player.MediaEnded += (_, _) => Ended?.Invoke();
+        _player.MediaFailed += (_, _) => Ended?.Invoke();
         _player.Open(new Uri(file, UriKind.Absolute));
         _player.Volume = Math.Clamp(volume / 100.0, 0.0, 1.0);
         _player.Play();

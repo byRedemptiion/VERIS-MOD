@@ -235,6 +235,17 @@ public static class LibraryService
         ("builtin:chime",  "Soft Chime",   "Soft_Chime.wav"),
         ("builtin:pop",    "Digital Pop",  "Digital_Pop.wav"),
         ("builtin:violet", "Violet Ping",  "Violet_Ping.wav"),
+        ("builtin:veris_message",   "Voix V.E.R.I.S • Nouveau message",   "Veris_Message.wav"),
+        ("builtin:veris_join",      "Voix V.E.R.I.S • Utilisateur rejoint", "Veris_Rejoint.wav"),
+        ("builtin:veris_leave",     "Voix V.E.R.I.S • Utilisateur parti",   "Veris_Parti.wav"),
+        ("builtin:veris_calling",   "Voix V.E.R.I.S • Appel en cours",      "Veris_Appel_Sortant.wav"),
+        ("builtin:veris_reconnect", "Voix V.E.R.I.S • Connexion en cours",   "Veris_Connexion.wav"),
+        ("builtin:veris_disconnect","Voix V.E.R.I.S • Déconnexion",         "Veris_Deconnexion.wav"),
+        ("builtin:veris_mute",      "Voix V.E.R.I.S • Micro coupé",         "Veris_Micro_Coupe.wav"),
+        ("builtin:veris_unmute",    "Voix V.E.R.I.S • Micro démuté",        "Veris_Micro_Active.wav"),
+        ("builtin:veris_deafen",    "Voix V.E.R.I.S • Casque coupé",        "Veris_Casque_Coupe.wav"),
+        ("builtin:veris_undeafen",  "Voix V.E.R.I.S • Son rétabli",         "Veris_Casque_Active.wav"),
+        ("builtin:veris_ringing",   "Voix V.E.R.I.S • Appel entrant",       "Veris_Appel_Entrant.wav"),
     };
 
     public static LibraryFile Read() =>

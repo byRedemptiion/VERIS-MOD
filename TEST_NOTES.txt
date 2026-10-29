@@ -1,0 +1,5 @@
+VERSION DE TEST de VERIS MOD : à essayer avant la publication officielle.
+Nouveautés : voix V.E.R.I.S (petit robot enfant), icônes vectorielles, polices Manrope,
+animations (cartes, mascotte, onde), notifications discrètes, glisser-déposer d'un son sur une carte,
+couleur perso, écran de bienvenue.
+Cette pré-version n'est jamais proposée comme mise à jour automatique.

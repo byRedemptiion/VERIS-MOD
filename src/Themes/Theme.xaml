@@ -231,8 +231,14 @@
                      Stroke="Transparent"/>
             <Ellipse Width="14" Height="14" Fill="{Binding AccentBrush}"
                      Stroke="{Binding BgBrush}" StrokeThickness="1"/>
+            <TextBlock x:Name="Plus" Text="+" FontSize="11" FontWeight="ExtraBold" Visibility="Collapsed"
+                       Foreground="{DynamicResource OnAccentBrush}"
+                       HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,-1,0,0"/>
           </Grid>
           <ControlTemplate.Triggers>
+            <DataTrigger Binding="{Binding Key}" Value="custom">
+              <Setter TargetName="Plus" Property="Visibility" Value="Visible"/>
+            </DataTrigger>
             <DataTrigger Binding="{Binding IsSelected}" Value="True">
               <Setter TargetName="Ring" Property="Stroke" Value="{DynamicResource TextBrush}"/>
             </DataTrigger>

@@ -13,9 +13,9 @@
     <ApplicationIcon>Assets\Audely.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
 
-    <Version>1.5.1</Version>
-    <AssemblyVersion>1.5.1.0</AssemblyVersion>
-    <FileVersion>1.5.1.0</FileVersion>
+    <Version>1.5.9</Version>
+    <AssemblyVersion>1.5.9.0</AssemblyVersion>
+    <FileVersion>1.5.9.0</FileVersion>
     <Authors>byRedemptiion</Authors>
     <Product>VERIS MOD</Product>
     <Description>VERIS MOD — personnalisation des sons Discord</Description>
@@ -36,6 +36,7 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Resource Include="Assets\VERIS.png" />
+    <Resource Include="Assets\Fonts\*.ttf" />
 
     <!-- JS du hook : copié tel quel depuis V1.3.7, embarqué dans l'exécutable -->
     <EmbeddedResource Include="Js\audely_runtime_loader.js" LogicalName="Audely.Js.audely_runtime_loader.js" />

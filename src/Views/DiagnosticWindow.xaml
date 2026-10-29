@@ -4,7 +4,7 @@
         Title="VERIS MOD — Diagnostic" Width="900" Height="640" MinWidth="620" MinHeight="420"
         WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
         Background="{DynamicResource BgBrush}" Foreground="{DynamicResource TextBrush}"
-        FontFamily="Segoe UI Variable Display, Segoe UI">
+        FontFamily="/Assets/Fonts/#Manrope, Segoe UI Variable Display, Segoe UI">
   <Grid Margin="16">
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto"/>

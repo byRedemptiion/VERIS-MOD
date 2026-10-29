@@ -4,7 +4,7 @@
         Title="VERIS MOD — Bibliothèque" Width="620" Height="520" MinWidth="500" MinHeight="380"
         WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
         Background="{DynamicResource BgBrush}" Foreground="{DynamicResource TextBrush}"
-        FontFamily="Segoe UI Variable Display, Segoe UI">
+        FontFamily="/Assets/Fonts/#Manrope, Segoe UI Variable Display, Segoe UI">
   <Grid Margin="16">
     <Grid.RowDefinitions>
       <RowDefinition Height="Auto"/>

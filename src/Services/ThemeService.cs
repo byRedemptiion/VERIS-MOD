@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Media;
 
@@ -78,11 +79,45 @@ public static class ThemeService
 
     public static ThemePalette Current { get; private set; } = All[0];
 
+    /// <summary>Couleur d'accent choisie par l'utilisateur (ambiance « Couleur perso »), au format #RRGGBB.</summary>
+    public static string CustomAccent { get; set; } = "#7C4DFF";
+
+    private static readonly Regex HexColor = new(@"^#?[0-9A-Fa-f]{6}$", RegexOptions.Compiled);
+
+    /// <summary>Normalise « 7c4dff » ou « #7C4DFF » en « #7C4DFF ». Retourne null si la valeur est invalide.</summary>
+    public static string? NormalizeHex(string? text)
+    {
+        string t = (text ?? "").Trim();
+        if (!HexColor.IsMatch(t)) return null;
+        return "#" + t.TrimStart('#').ToUpperInvariant();
+    }
+
+    /// <summary>Ambiance « Couleur perso » : neutres du violet nuit + l'accent choisi.</summary>
+    public static ThemePalette BuildCustom(string accentHex)
+    {
+        string hex = NormalizeHex(accentHex) ?? "#7C4DFF";
+        Color c = ToColor(hex);
+        Color light = Mix(c, Colors.White, 0.45);
+        double luminance = (0.299 * c.R + 0.587 * c.G + 0.114 * c.B) / 255.0;
+        return All[0] with
+        {
+            Key = "custom",
+            Name = "Couleur perso",
+            Accent = hex,
+            Accent2 = ToHex(light),
+            OnAccent = luminance > 0.6 ? "#101114" : "#FFFFFF",
+        };
+    }
+
     /// <summary>Déclenché après chaque changement d'ambiance (pour mettre à jour la barre de choix).</summary>
     public static event Action? Changed;
 
-    public static ThemePalette Find(string? key) =>
-        All.FirstOrDefault(t => string.Equals(t.Key, key, StringComparison.OrdinalIgnoreCase)) ?? All[0];
+    public static ThemePalette Find(string? key)
+    {
+        if (string.Equals(key, "custom", StringComparison.OrdinalIgnoreCase))
+            return BuildCustom(CustomAccent);
+        return All.FirstOrDefault(t => string.Equals(t.Key, key, StringComparison.OrdinalIgnoreCase)) ?? All[0];
+    }
 
     /// <summary>Applique l'ambiance. À appeler sur le thread de l'interface.</summary>
     public static void Apply(string? key)
@@ -113,9 +148,18 @@ public static class ThemeService
         res["PressedBrush"] = Solid(WithAlpha(accent, 0x38));
         res["AccentFillBrush"] = BuildAccentFill(p);
 
-        res["DisplayFont"] = new FontFamily(p.Serif
-            ? "Cormorant Garamond, Georgia, Palatino Linotype, serif"
-            : "Segoe UI Variable Display, Segoe UI");
+        // Fond : dégradé léger teinté par l'accent + halo lumineux en haut à gauche.
+        bool lightBase = (0.299 * ToColor(p.Bg).R + 0.587 * ToColor(p.Bg).G + 0.114 * ToColor(p.Bg).B) > 150;
+        Color bg = ToColor(p.Bg);
+        res["AppBackgroundBrush"] = BuildBackground(bg, accent, lightBase ? 0.05 : 0.09);
+        res["GlowBrush"] = BuildGlow(accent, lightBase ? (byte)0x30 : (byte)0x3C);
+        res["ShadowColor"] = lightBase ? Color.FromRgb(0x4A, 0x52, 0x7A) : Colors.Black;
+        res["ShadowOpacity"] = lightBase ? 0.18 : 0.38;
+
+        // Polices embarquées (Manrope / Cormorant Garamond), avec repli sur Segoe UI si besoin.
+        res["DisplayFont"] = new FontFamily(new Uri("pack://application:,,,/"), p.Serif
+            ? "./Assets/Fonts/#Cormorant Garamond Display, Georgia, serif"
+            : "./Assets/Fonts/#Manrope ExtraBold, Segoe UI Variable Display, Segoe UI");
         res["WordSize"] = p.Serif ? 27.0 : 22.0;
         res["H1Size"] = p.Serif ? 30.0 : 24.0;
         res["H2Size"] = p.Serif ? 24.0 : 19.0;
@@ -138,6 +182,33 @@ public static class ThemeService
         }
         return Solid(p.Accent);
     }
+
+    private static Brush BuildBackground(Color bg, Color accent, double tint)
+    {
+        var g = new LinearGradientBrush { StartPoint = new Point(0, 0), EndPoint = new Point(1, 1) };
+        g.GradientStops.Add(new GradientStop(bg, 0.0));
+        g.GradientStops.Add(new GradientStop(Mix(bg, accent, tint), 0.55));
+        g.GradientStops.Add(new GradientStop(bg, 1.0));
+        g.Freeze();
+        return g;
+    }
+
+    private static Brush BuildGlow(Color accent, byte alpha)
+    {
+        var g = new RadialGradientBrush
+        {
+            Center = new Point(0.5, 0.5),
+            GradientOrigin = new Point(0.5, 0.5),
+            RadiusX = 0.5,
+            RadiusY = 0.5,
+        };
+        g.GradientStops.Add(new GradientStop(WithAlpha(accent, alpha), 0.0));
+        g.GradientStops.Add(new GradientStop(WithAlpha(accent, 0), 1.0));
+        g.Freeze();
+        return g;
+    }
+
+    private static string ToHex(Color c) => "#" + c.R.ToString("X2") + c.G.ToString("X2") + c.B.ToString("X2");
 
     private static Color ToColor(string hex) => (Color)ColorConverter.ConvertFromString(hex);
 

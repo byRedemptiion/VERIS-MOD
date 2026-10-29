@@ -3,10 +3,12 @@ name: Release
 # Publier une version : changer AppInfo.Version (src/Services/Core.cs) et pousser sur main.
 # Si la Release vX.Y.Z n'existe pas encore, GitHub compile VERIS MOD, fabrique le setup,
 # calcule son SHA-256 et crée la Release (avec latest.json lu par l'application).
+# Branche « test » : même chaîne, mais en pré-version (vX.Y.Z-test.N), sans latest.json :
+# l'application installée ne la propose jamais comme mise à jour.
 on:
   push:
-    branches: [main]
-    paths: ['src/**', 'installer/**', 'RELEASE_NOTES.txt']
+    branches: [main, test]
+    paths: ['src/**', 'installer/**', 'RELEASE_NOTES.txt', 'TEST_NOTES.txt', '.github/workflows/**']
   workflow_dispatch:
 
 permissions:
@@ -33,6 +35,17 @@ jobs:
           if ($core -notmatch 'Version = "(\d+\.\d+\.\d+)"') { throw 'AppInfo.Version introuvable dans Core.cs' }
           $v = $Matches[1]
           "version=$v" >> $env:GITHUB_OUTPUT
+          $isTest = '${{ github.ref_name }}' -eq 'test'
+          if ($isTest) {
+            $tag = "v$v-test.${{ github.run_number }}"
+            "tag=$tag" >> $env:GITHUB_OUTPUT
+            "test=true" >> $env:GITHUB_OUTPUT
+            "skip=false" >> $env:GITHUB_OUTPUT
+            Write-Host "Build de TEST : $tag (pré-version)."
+            exit 0
+          }
+          "tag=v$v" >> $env:GITHUB_OUTPUT
+          "test=false" >> $env:GITHUB_OUTPUT
           gh release view "v$v" --repo '${{ github.repository }}' *> $null
           if ($LASTEXITCODE -eq 0) {
             "skip=true" >> $env:GITHUB_OUTPUT
@@ -44,11 +57,22 @@ jobs:
 
       - name: Compiler
         if: steps.ver.outputs.skip != 'true'
-        run: >
-          dotnet publish src/Audely.csproj -c Release -r win-x64 --self-contained true
-          -p:PublishSingleFile=true -p:PublishReadyToRun=true
-          -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true
-          -o publish
+        shell: pwsh
+        run: |
+          dotnet publish src/Audely.csproj -c Release -r win-x64 --self-contained true `
+            -p:PublishSingleFile=true -p:PublishReadyToRun=true `
+            -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true `
+            -o publish 2>&1 | Tee-Object -FilePath build.log
+          $code = $LASTEXITCODE
+          if ($code -ne 0) {
+            # Les erreurs de compilation deviennent des annotations lisibles dans la page du run.
+            $errs = Select-String -Path build.log -Pattern ': error ' | ForEach-Object { $_.Line.Trim() } | Sort-Object -Unique | Select-Object -First 40
+            foreach ($e in $errs) {
+              $msg = ($e -replace '\[[^\]]*\]\s*$', '') -replace '%', '%25'
+              Write-Host "::error::$msg"
+            }
+            exit $code
+          }
 
       - name: Installer NSIS
         if: steps.ver.outputs.skip != 'true'
@@ -73,9 +97,10 @@ jobs:
           if (-not $setup) { throw 'Setup introuvable' }
           $sha = (Get-FileHash $setup.FullName -Algorithm SHA256).Hash.ToLower()
           $notes = (Get-Content RELEASE_NOTES.txt -Raw -Encoding utf8).Trim()
+          $tag = '${{ steps.ver.outputs.tag }}'
           $json = [ordered]@{
             version = $v
-            url     = "https://github.com/${{ github.repository }}/releases/download/v$v/$($setup.Name)"
+            url     = "https://github.com/${{ github.repository }}/releases/download/$tag/$($setup.Name)"
             sha256  = $sha
             notes   = $notes
           } | ConvertTo-Json
@@ -89,5 +114,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $v = '${{ steps.ver.outputs.version }}'
+          $tag = '${{ steps.ver.outputs.tag }}'
           $setup = (Get-ChildItem installer -Filter 'VERIS_MOD_Setup_*.exe' | Select-Object -First 1).FullName
-          gh release create "v$v" $setup latest.json --title "VERIS MOD $v" --notes-file RELEASE_NOTES.txt --target '${{ github.sha }}'
+          if ('${{ steps.ver.outputs.test }}' -eq 'true') {
+            # Pré-version de test : pas de latest.json, donc jamais proposée aux mises à jour automatiques.
+            gh release create $tag $setup --prerelease --title "VERIS MOD $v — VERSION DE TEST" --notes-file TEST_NOTES.txt --target '${{ github.sha }}'
+          } else {
+            gh release create $tag $setup latest.json --title "VERIS MOD $v" --notes-file RELEASE_NOTES.txt --target '${{ github.sha }}'
+          }

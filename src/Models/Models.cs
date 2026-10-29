@@ -65,6 +65,12 @@ public sealed class AppSettings
     /// <summary>Clé de l'ambiance de couleur (violet, ocean, emerald, sakura, amber, light, premium).</summary>
     public string Theme { get; set; } = "violet";
 
+    /// <summary>Couleur d'accent de l'ambiance « Couleur perso » (#RRGGBB).</summary>
+    public string CustomAccent { get; set; } = "#7C4DFF";
+
+    /// <summary>L'écran de bienvenue a déjà été affiché.</summary>
+    public bool OnboardingDone { get; set; }
+
     [JsonExtensionData] public Dictionary<string, JsonElement>? Extra { get; set; }
 }
 

@@ -8,6 +8,7 @@ using System.Text;
 using System.Threading;
 using System.Windows;
 using System.Windows.Threading;
+using Audely.Models;
 using Audely.Services;
 
 namespace Audely;
@@ -40,7 +41,13 @@ public partial class App : Application
 
         // Ambiance de couleur choisie la dernière fois (avant la création de la fenêtre).
         string themeKey = ThemeService.DefaultKey;
-        try { themeKey = ConfigService.ReadSettings().Theme; } catch { }
+        try
+        {
+            AppSettings saved = ConfigService.ReadSettings();
+            themeKey = saved.Theme;
+            ThemeService.CustomAccent = ThemeService.NormalizeHex(saved.CustomAccent) ?? ThemeService.CustomAccent;
+        }
+        catch { }
         ThemeService.Apply(themeKey);
 
         var window = new MainWindow();

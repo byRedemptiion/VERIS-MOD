@@ -4,7 +4,7 @@
         Title="À propos de VERIS MOD" Width="460" SizeToContent="Height"
         WindowStartupLocation="CenterOwner" WindowStyle="None" ResizeMode="NoResize"
         ShowInTaskbar="False" Background="{DynamicResource BgBrush}" Foreground="{DynamicResource TextBrush}"
-        FontFamily="Segoe UI Variable Display, Segoe UI"
+        FontFamily="/Assets/Fonts/#Manrope, Segoe UI Variable Display, Segoe UI"
         MouseLeftButtonDown="OnDrag">
   <Border BorderBrush="{DynamicResource AccentLineBrush}" BorderThickness="1" Padding="24">
     <StackPanel>
