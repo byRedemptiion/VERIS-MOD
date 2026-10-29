@@ -1,1 +1,1 @@
-Voix V.E.R.I.S : suppression du bip avant chaque phrase, la voix parle directement.
+Profil intégré « Voix VERIS », sons propres à chaque catégorie (bouton + sur chaque carte), favoris ★ et mode Aléatoire, « Nouveau message » dans le panneau de droite et « Appel entrant » dans la liste. Anciens sons de base retirés.
