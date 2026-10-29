@@ -85,13 +85,13 @@ public sealed class MainViewModel : ObservableObject
         PauseCommand = new AsyncRelayCommand(TogglePauseAsync, () => _snapshot.ConfiguredCount > 0 && _configOk && !IsBusy, OnError);
         ActivateCommand = new AsyncRelayCommand(() => ActivateAsync(confirm: true), () => CanActivate && !IsBusy, OnError);
         UninstallCommand = new AsyncRelayCommand(UninstallAsync, () => _snapshot.Core != null && (_snapshot.HookInstalled || _snapshot.OverlayHookInstalled) && !IsBusy, OnError);
-        AddSoundCommand = new RelayCommand(AddSound);
+        RandomizeCommand = new AsyncRelayCommand(RandomizeAsync, () => CanApplyAnything && !IsBusy, OnError);
         OpenLibraryCommand = new RelayCommand(() => _dialogs.ShowLibrary());
         OpenDiagnosticCommand = new RelayCommand(() => _dialogs.ShowDiagnostic());
         OpenAboutCommand = new RelayCommand(() => _dialogs.ShowAbout());
         SaveProfileCommand = new RelayCommand(SaveProfile, () => _configOk);
         LoadProfileCommand = new AsyncRelayCommand(LoadProfileAsync, () => SelectedProfile != null && _configOk && !IsBusy, OnError);
-        DeleteProfileCommand = new RelayCommand(DeleteProfile, () => SelectedProfile != null);
+        DeleteProfileCommand = new RelayCommand(DeleteProfile, () => SelectedProfile is { IsBuiltin: false });
         ChooseThemeCommand = new RelayCommand(ChooseTheme);
         UpdateNowCommand = new AsyncRelayCommand(UpdateNowAsync, () => _update != null && !IsUpdating, OnError);
         DismissUpdateCommand = new RelayCommand(() => { _update = null; RefreshUpdateState(); });
@@ -387,7 +387,7 @@ public sealed class MainViewModel : ObservableObject
     public ICommand PauseCommand { get; }
     public ICommand ActivateCommand { get; }
     public ICommand UninstallCommand { get; }
-    public ICommand AddSoundCommand { get; }
+    public ICommand RandomizeCommand { get; }
     public ICommand OpenLibraryCommand { get; }
     public ICommand OpenDiagnosticCommand { get; }
     public ICommand OpenAboutCommand { get; }
@@ -418,7 +418,9 @@ public sealed class MainViewModel : ObservableObject
 
     private EventCardViewModel CreateCard(EventDef def)
     {
-        var card = new EventCardViewModel(def, Sounds);
+        var card = new EventCardViewModel(def);
+        card.AddSoundCommand = new RelayCommand(() => AddSoundFor(card));
+        card.ToggleFavoriteCommand = new RelayCommand(() => ToggleFavorite(card), () => card.SelectedSound != null);
         card.TestCommand = new RelayCommand(() => TestSound(card), () => card.SelectedSound != null);
         card.ApplyCommand = new AsyncRelayCommand(() => ApplyCardAsync(card), () => CanApplyAnything && card.SelectedSound != null && !IsBusy, OnError);
         card.RestoreCommand = new RelayCommand(() => RestoreCard(card), () => _snapshot.Core != null && card.IsConfigured && _configOk && !IsBusy);
@@ -551,22 +553,28 @@ public sealed class MainViewModel : ObservableObject
         Sounds.Clear();
         foreach (SoundItem s in fresh) Sounds.Add(s);
 
+        // Chaque carte ne propose que les sons de sa catégorie (voix V.E.R.I.S, sons ajoutés ici, anciens sons communs).
         foreach (EventCardViewModel card in AllCards)
         {
-            string? oldId = selected[card.Id];
-            card.SelectedSound =
-                Sounds.FirstOrDefault(s => s.Id == oldId) ?? Sounds.FirstOrDefault();
+            string category = card.Id;
+            card.SetOptions(
+                fresh.Where(s => s.Category == "" || s.Category == category),
+                FavoritesService.Get(category),
+                selected[card.Id]);
         }
 
         int userCount = Sounds.Count(s => s.Kind == SoundKind.User);
-        LibraryInfo = $"Bibliothèque : {userCount} son(s) perso • les sons ajoutés apparaissent dans tous les menus.";
+        LibraryInfo = $"Bibliothèque : {userCount} son(s) perso • le bouton + d'une carte ajoute un son à sa catégorie.";
     }
 
     public void ReloadProfiles()
     {
         string? previous = SelectedProfile?.Name;
         Profiles.Clear();
-        foreach (Profile p in ProfileService.Read().Profiles.OrderBy(p => p.Name, StringComparer.CurrentCultureIgnoreCase))
+        Profiles.Add(LibraryService.BuiltinProfile());      // « Voix VERIS » : toujours en tête, non supprimable
+        foreach (Profile p in ProfileService.Read().Profiles
+                     .Where(p => !string.Equals(p.Name, LibraryService.BuiltinProfileName, StringComparison.OrdinalIgnoreCase))
+                     .OrderBy(p => p.Name, StringComparer.CurrentCultureIgnoreCase))
             Profiles.Add(p);
 
         SelectedProfile =
@@ -1044,39 +1052,92 @@ public sealed class MainViewModel : ObservableObject
 
     // ---------------------------------------------------------------- glisser-déposer
 
-    /// <summary>Un fichier audio glissé sur la fenêtre : ajouté à la bibliothèque, et sélectionné sur la carte visée.</summary>
+    /// <summary>Un fichier audio glissé sur une carte : ajouté à SA catégorie et sélectionné.</summary>
     public void HandleDroppedFile(string path, EventCardViewModel? card)
+    {
+        if (card == null)
+        {
+            ShowToast("Glisse le fichier sur la carte de l'événement voulu (chaque catégorie a ses sons).");
+            return;
+        }
+        ImportForCard(card, path);
+    }
+
+    /// <summary>Bouton + d'une carte : choisit un fichier et l'ajoute à la catégorie de cette carte.</summary>
+    private void AddSoundFor(EventCardViewModel card)
+    {
+        string? path = _dialogs.PickAudioFile();
+        if (path == null) return;
+        ImportForCard(card, path);
+    }
+
+    private void ImportForCard(EventCardViewModel card, string path)
     {
         try
         {
-            string name = LibraryService.Import(path);
+            LibrarySound entry = LibraryService.ImportSound(path, card.Id);
             ReloadSounds();
-            SoundItem? added = Sounds.FirstOrDefault(x => x.Kind == SoundKind.User && x.Name == name);
-            if (card != null && added != null)
-            {
-                card.SelectedSound = added;
-                ShowToast($"« {name} » est choisi pour « {card.Title} ». Clique sur Appliquer.");
-            }
-            else
-            {
-                ShowToast($"« {name} » est ajouté à la bibliothèque.");
-            }
+            SoundItem? added = Sounds.FirstOrDefault(x => x.Id == entry.Id);
+            if (added != null) card.SelectedSound = added;
+            ShowToast($"« {entry.Name} » ajouté à « {card.Title} ». Clique sur Appliquer pour l'utiliser.");
         }
         catch (Exception ex) { _dialogs.Error(ex.Message, "VERIS MOD — ajout refusé"); }
     }
 
-    private void AddSound()
+    // ---------------------------------------------------------------- favoris et mode aléatoire
+
+    private void ToggleFavorite(EventCardViewModel card)
     {
+        SoundItem? sound = card.SelectedSound;
+        if (sound == null) return;
+
         try
         {
-            string? path = _dialogs.PickAudioFile();
-            if (path == null) return;
-
-            string name = LibraryService.Import(path);
-            ReloadSounds();
-            ShowToast($"« {name} » est disponible dans tous les menus.");
+            bool now = FavoritesService.Toggle(card.Id, sound.Id);
+            card.SetFavorites(FavoritesService.Get(card.Id));
+            ShowToast(now
+                ? $"★ « {sound.Name} » est maintenant favori pour « {card.Title} »."
+                : $"« {sound.Name} » n'est plus favori.");
         }
-        catch (Exception ex) { _dialogs.Error(ex.Message, "VERIS MOD — ajout refusé"); }
+        catch (Exception ex) { _dialogs.Error(ex.Message, "VERIS MOD — favoris"); }
+    }
+
+    /// <summary>Tire au hasard un favori par catégorie (là où il y en a) et l'applique d'un coup.</summary>
+    private async Task RandomizeAsync()
+    {
+        var picks = new List<(string Id, SoundItem Sound, int Volume, EventCardViewModel Card)>();
+        var random = new Random();
+
+        foreach (EventCardViewModel card in AllCards)
+        {
+            List<SoundOption> favorites = card.Options.Where(o => o.IsFavorite).ToList();
+            if (favorites.Count == 0) continue;
+
+            // Avec plusieurs favoris, on évite de retomber sur celui qui est déjà choisi.
+            List<SoundOption> pool = favorites.Count > 1
+                ? favorites.Where(o => o != card.SelectedOption).ToList()
+                : favorites;
+            SoundOption pick = pool[random.Next(pool.Count)];
+            AudioFiles.Validate(pick.Sound.Path);
+            picks.Add((card.Id, pick.Sound, card.VolumeInt, card));
+        }
+
+        if (picks.Count == 0)
+        {
+            ShowToast("Aucun favori pour l'instant : clique sur ★ sur les sons que tu aimes, puis relance « Aléatoire ».");
+            return;
+        }
+
+        foreach (var p in picks) p.Card.SelectedSound = p.Sound;
+
+        List<SoundItem> sounds = Sounds.ToList();
+        await ApplyAsync(() =>
+        {
+            try { ConfigService.RepairConfiguredFiles(sounds); } catch { }
+            foreach (var p in picks) ConfigService.SetTarget(p.Id, p.Sound, p.Volume);
+            ClearPausedFlag();
+        });
+        ShowToast($"Aléatoire : {picks.Count} catégorie(s) mélangée(s) parmi tes favoris.");
     }
 
     private void SaveProfile()
@@ -1085,6 +1146,11 @@ public sealed class MainViewModel : ObservableObject
         {
             string? name = _dialogs.Prompt("Nom du profil :", "VERIS MOD — Nouveau profil", "Mon profil")?.Trim();
             if (string.IsNullOrWhiteSpace(name)) return;
+            if (string.Equals(name, LibraryService.BuiltinProfileName, StringComparison.OrdinalIgnoreCase))
+            {
+                _dialogs.Error("Ce nom est réservé au profil intégré de VERIS MOD. Choisis un autre nom.", "VERIS MOD — profil");
+                return;
+            }
 
             ProfileService.SaveCurrent(name);
             ReloadProfiles();
@@ -1097,6 +1163,11 @@ public sealed class MainViewModel : ObservableObject
     {
         Profile? profile = SelectedProfile;
         if (profile == null) return;
+        if (profile.IsBuiltin)
+        {
+            ShowToast("Le profil « " + profile.Name + " » est intégré : il ne peut pas être supprimé.");
+            return;
+        }
         if (!_dialogs.Confirm($"Supprimer le profil « {profile.Name} » ?", "VERIS MOD — Profils")) return;
 
         try

@@ -12,20 +12,42 @@ using Audely.Services;
 
 namespace Audely.ViewModels;
 
+/// <summary>Un choix du menu d'une carte : un son + son état de favori (★) dans cette catégorie.</summary>
+public sealed class SoundOption : ObservableObject
+{
+    private bool _isFavorite;
+
+    public SoundOption(SoundItem sound, bool isFavorite)
+    {
+        Sound = sound;
+        _isFavorite = isFavorite;
+    }
+
+    public SoundItem Sound { get; }
+
+    public bool IsFavorite
+    {
+        get => _isFavorite;
+        set { if (Set(ref _isFavorite, value)) OnPropertyChanged(nameof(Label)); }
+    }
+
+    /// <summary>Texte affiché dans le menu : une étoile devant les favoris.</summary>
+    public string Label => (_isFavorite ? "★ " : "") + Sound.DisplayName;
+}
+
 public sealed class EventCardViewModel : ObservableObject
 {
     public const string Waveform = "▂▅▇▃▆▂▅▇▂▆▃▅";
 
-    private SoundItem? _selectedSound;
+    private SoundOption? _selectedOption;
     private double _volume = 100;
     private string _stateText = "État : non analysé.";
     private bool _isConfigured;
     private bool _canApply;
 
-    public EventCardViewModel(EventDef def, ObservableCollection<SoundItem> sounds)
+    public EventCardViewModel(EventDef def)
     {
         Def = def;
-        Sounds = sounds;
         // Teinte de l'événement + transparence : lisible sur les ambiances sombres comme sur l'ambiance claire.
         IconBg = Frozen(def.IconFg, 0x26);
         IconBorder = Frozen(def.IconFg, 0x66);
@@ -43,18 +65,51 @@ public sealed class EventCardViewModel : ObservableObject
     public Brush IconFg { get; }
     public Geometry IconGeometry { get; }
 
-    public ObservableCollection<SoundItem> Sounds { get; }
+    /// <summary>Les sons de CETTE catégorie : la voix V.E.R.I.S, les sons ajoutés ici, et les anciens sons communs.</summary>
+    public ObservableCollection<SoundOption> Options { get; } = new();
 
-    public SoundItem? SelectedSound
+    public SoundOption? SelectedOption
     {
-        get => _selectedSound;
+        get => _selectedOption;
         set
         {
-            if (Set(ref _selectedSound, value)) OnPropertyChanged(nameof(HasSound));
+            if (!Set(ref _selectedOption, value)) return;
+            OnPropertyChanged(nameof(SelectedSound));
+            OnPropertyChanged(nameof(HasSound));
+            OnPropertyChanged(nameof(IsSelectedFavorite));
         }
     }
 
-    public bool HasSound => _selectedSound != null;
+    /// <summary>Le son choisi. L'affecter à un son absent de cette catégorie est sans effet.</summary>
+    public SoundItem? SelectedSound
+    {
+        get => _selectedOption?.Sound;
+        set
+        {
+            if (value == null) { SelectedOption = null; return; }
+            SoundOption? match = Options.FirstOrDefault(o => o.Sound.Id == value.Id);
+            if (match != null) SelectedOption = match;
+        }
+    }
+
+    public bool HasSound => _selectedOption != null;
+    public bool IsSelectedFavorite => _selectedOption?.IsFavorite ?? false;
+
+    /// <summary>Reconstruit le menu de la carte (en gardant le son choisi si possible).</summary>
+    public void SetOptions(IEnumerable<SoundItem> sounds, ISet<string> favorites, string? keepId)
+    {
+        Options.Clear();
+        foreach (SoundItem s in sounds)
+            Options.Add(new SoundOption(s, favorites.Contains(s.Id)));
+
+        SelectedOption = Options.FirstOrDefault(o => o.Sound.Id == keepId) ?? Options.FirstOrDefault();
+    }
+
+    public void SetFavorites(ISet<string> favorites)
+    {
+        foreach (SoundOption o in Options) o.IsFavorite = favorites.Contains(o.Sound.Id);
+        OnPropertyChanged(nameof(IsSelectedFavorite));
+    }
 
     public double Volume
     {
@@ -82,6 +137,8 @@ public sealed class EventCardViewModel : ObservableObject
     public ICommand? TestCommand { get; set; }
     public ICommand? ApplyCommand { get; set; }
     public ICommand? RestoreCommand { get; set; }
+    public ICommand? AddSoundCommand { get; set; }
+    public ICommand? ToggleFavoriteCommand { get; set; }
 
     private static Brush Frozen(string hex, byte alpha = 0xFF)
     {

@@ -21,14 +21,17 @@ public sealed record EventDef(
 
 public static class EventCatalog
 {
-    // Ordre d'affichage des cartes (centre). L'appel entrant a son panneau dédié.
+    // Ordre d'affichage des cartes (centre), par paires logiques. « Nouveau message » a son panneau dédié.
     public static readonly string[] CardOrder =
     {
-        "message1", "user_join", "user_leave", "call_calling", "reconnect",
-        "disconnect", "mute", "unmute", "deafen", "undeafen",
+        "user_join", "user_leave",
+        "call_calling", "call_ringing",
+        "reconnect", "disconnect",
+        "mute", "unmute",
+        "deafen", "undeafen",
     };
 
-    public const string FeaturedId = "call_ringing";
+    public const string FeaturedId = "message1";
 
     public static readonly IReadOnlyList<EventDef> All = new[]
     {

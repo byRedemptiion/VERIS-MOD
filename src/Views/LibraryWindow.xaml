@@ -15,13 +15,14 @@
     <StackPanel Margin="0,0,0,10">
       <TextBlock Text="Bibliothèque de sons" FontSize="20" FontWeight="Bold"/>
       <TextBlock x:Name="CountText" Foreground="{DynamicResource MutedBrush}" FontSize="11" Margin="0,2,0,0"/>
+      <TextBlock Text="Pour ajouter un son, utilise le bouton + de la carte de l'événement voulu : chaque catégorie a ses propres sons."
+                 Foreground="{DynamicResource MutedBrush}" FontSize="11" Margin="0,2,0,0" TextWrapping="Wrap"/>
     </StackPanel>
 
-    <ListBox x:Name="SoundList" Grid.Row="1" DisplayMemberPath="DisplayName"
+    <ListBox x:Name="SoundList" Grid.Row="1" DisplayMemberPath="LibraryName"
              SelectionChanged="OnSelectionChanged" MouseDoubleClick="OnPlay"/>
 
     <WrapPanel Grid.Row="2" Margin="0,12,0,0" HorizontalAlignment="Right">
-      <Button Content="+ Ajouter" Style="{StaticResource CompactButtonStyle}" Margin="0,0,8,0" Click="OnAdd"/>
       <Button x:Name="PlayButton" Content="▶ Écouter" Style="{StaticResource CompactButtonStyle}" Margin="0,0,8,0" Click="OnPlay"/>
       <Button x:Name="RenameButton" Content="Renommer" Style="{StaticResource CompactButtonStyle}" Margin="0,0,8,0" Click="OnRename"/>
       <Button x:Name="DeleteButton" Content="Supprimer" Style="{StaticResource CompactButtonStyle}" Margin="0,0,8,0" Click="OnDelete"/>

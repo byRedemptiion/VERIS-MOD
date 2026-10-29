@@ -109,21 +109,23 @@
 
           <!-- Choix du son -->
           <ComboBox Grid.Row="1" Margin="0,9,0,9"
-                    ItemsSource="{Binding Sounds}"
-                    SelectedItem="{Binding SelectedSound, Mode=TwoWay}">
+                    ItemsSource="{Binding Options}"
+                    SelectedItem="{Binding SelectedOption, Mode=TwoWay}">
             <ComboBox.ItemTemplate>
               <DataTemplate>
-                <TextBlock Text="{Binding DisplayName}"/>
+                <TextBlock Text="{Binding Label}"/>
               </DataTemplate>
             </ComboBox.ItemTemplate>
           </ComboBox>
 
-          <!-- ▶ · volume · Appliquer · restaurer -->
+          <!-- ▶ · volume · ★ · + · Appliquer · restaurer -->
           <Grid Grid.Row="2">
             <Grid.ColumnDefinitions>
               <ColumnDefinition Width="Auto"/>
               <ColumnDefinition Width="*"/>
               <ColumnDefinition Width="46"/>
+              <ColumnDefinition Width="Auto"/>
+              <ColumnDefinition Width="Auto"/>
               <ColumnDefinition Width="Auto"/>
               <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
@@ -139,9 +141,33 @@
             <TextBlock Grid.Column="2" Text="{Binding VolumeText}" FontSize="12" FontWeight="Bold"
                        Foreground="{DynamicResource Accent2Brush}"
                        VerticalAlignment="Center" TextAlignment="Right"/>
-            <Button Grid.Column="3" Content="Appliquer" Style="{StaticResource ApplyButtonStyle}"
+            <Button Grid.Column="3" Style="{StaticResource IconButtonStyle}" Width="28" Margin="8,0,0,0"
+                    Command="{Binding ToggleFavoriteCommand}"
+                    ToolTip="Favori ★ : ce son sera tiré au sort par « Aléatoire »">
+              <Path Stretch="Uniform" Width="14" Height="14">
+                <Path.Style>
+                  <Style TargetType="Path">
+                    <Setter Property="Data" Value="M22 9.24l-7.19-.62L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.63-7.03L22 9.24zM12 15.4l-3.76 2.27 1-4.28-3.32-2.88 4.38-.38L12 6.1l1.71 4.04 4.38.38-3.32 2.88 1 4.28L12 15.4z"/>
+                    <Setter Property="Fill" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
+                    <Style.Triggers>
+                      <DataTrigger Binding="{Binding IsSelectedFavorite}" Value="True">
+                        <Setter Property="Fill" Value="{DynamicResource AccentBrush}"/>
+                        <Setter Property="Data" Value="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
+                      </DataTrigger>
+                    </Style.Triggers>
+                  </Style>
+                </Path.Style>
+              </Path>
+            </Button>
+            <Button Grid.Column="4" Style="{StaticResource IconButtonStyle}" Width="28" Margin="6,0,0,0"
+                    Command="{Binding AddSoundCommand}"
+                    ToolTip="Ajouter un son à cette catégorie">
+              <Path Data="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" Stretch="Uniform" Width="12" Height="12"
+                    Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
+            </Button>
+            <Button Grid.Column="5" Content="Appliquer" Style="{StaticResource ApplyButtonStyle}"
                     Margin="10,0,6,0" Command="{Binding ApplyCommand}"/>
-            <Button Grid.Column="4" Style="{StaticResource IconButtonStyle}" Width="28"
+            <Button Grid.Column="6" Style="{StaticResource IconButtonStyle}" Width="28"
                     Command="{Binding RestoreCommand}"
                     ToolTip="Restaurer le son Discord d'origine">
               <Path Data="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z"
@@ -288,6 +314,9 @@
                          FontWeight="ExtraBold" Margin="8,0,0,7"/>
               <Button Content="Tout appliquer" Style="{StaticResource NavButtonStyle}"
                       Command="{Binding ApplyAllCommand}"/>
+              <Button Content="Aléatoire" Style="{StaticResource NavButtonStyle}"
+                      Command="{Binding RandomizeCommand}"
+                      ToolTip="Tire au sort un son favori ★ par catégorie."/>
               <Button Content="Tout restaurer" Style="{StaticResource NavButtonStyle}"
                       Command="{Binding RestoreAllCommand}"/>
               <Button Content="Activer" Style="{StaticResource NavButtonStyle}"
@@ -445,7 +474,7 @@
                 <ColumnDefinition Width="Auto"/>
               </Grid.ColumnDefinitions>
               <StackPanel>
-                <TextBlock Text="Appel entrant" FontFamily="{DynamicResource DisplayFont}"
+                <TextBlock Text="{Binding Title}" FontFamily="{DynamicResource DisplayFont}"
                            FontSize="{DynamicResource H2Size}" FontWeight="ExtraBold"/>
                 <TextBlock Text="{Binding Id}" Foreground="{DynamicResource MutedBrush}"
                            FontSize="11" Margin="0,2,0,0"/>
@@ -506,11 +535,11 @@
               </Grid>
             </Border>
 
-            <ComboBox Grid.Row="2" MinHeight="34" FontSize="13" ItemsSource="{Binding Sounds}"
-                      SelectedItem="{Binding SelectedSound, Mode=TwoWay}">
+            <ComboBox Grid.Row="2" MinHeight="34" FontSize="13" ItemsSource="{Binding Options}"
+                      SelectedItem="{Binding SelectedOption, Mode=TwoWay}">
               <ComboBox.ItemTemplate>
                 <DataTemplate>
-                  <TextBlock Text="{Binding DisplayName}"/>
+                  <TextBlock Text="{Binding Label}"/>
                 </DataTemplate>
               </ComboBox.ItemTemplate>
             </ComboBox>
@@ -543,6 +572,32 @@
                         Style="{StaticResource CompactButtonStyle}" Margin="4,0,0,0" Height="32"
                         Command="{Binding RestoreCommand}"/>
               </Grid>
+              <Grid Margin="0,8,0,0">
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="*"/>
+                  <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Button Style="{StaticResource CompactButtonStyle}" Margin="0,0,4,0" Height="32"
+                        Command="{Binding ToggleFavoriteCommand}"
+                        ToolTip="Les favoris ★ sont tirés au sort par « Aléatoire »">
+                  <TextBlock>
+                    <TextBlock.Style>
+                      <Style TargetType="TextBlock">
+                        <Setter Property="Text" Value="☆ Favori"/>
+                        <Style.Triggers>
+                          <DataTrigger Binding="{Binding IsSelectedFavorite}" Value="True">
+                            <Setter Property="Text" Value="★ Favori"/>
+                            <Setter Property="Foreground" Value="{DynamicResource Accent2Brush}"/>
+                          </DataTrigger>
+                        </Style.Triggers>
+                      </Style>
+                    </TextBlock.Style>
+                  </TextBlock>
+                </Button>
+                <Button Grid.Column="1" Content="+ Ajouter un son" Style="{StaticResource CompactButtonStyle}"
+                        Margin="4,0,0,0" Height="32" Command="{Binding AddSoundCommand}"
+                        ToolTip="Ajoute un son à cette catégorie"/>
+              </Grid>
               <Button Style="{StaticResource PrimaryButtonStyle}"
                       Margin="0,8,0,0" Height="40" FontSize="13" Command="{Binding TestCommand}">
                 <StackPanel Orientation="Horizontal">
@@ -565,11 +620,12 @@
                         Margin="0,0,6,6" Height="30"
                         ToolTip="Annonce chaque événement avec la voix du robot (réversible)."
                         Command="{Binding DataContext.ApplyVerisVoiceCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
-                <Button Content="+ Ajouter un son" Style="{StaticResource CompactButtonStyle}"
+                <Button Content="Aléatoire" Style="{StaticResource CompactButtonStyle}"
                         Margin="0,0,6,6" Height="30"
-                        Command="{Binding DataContext.AddSoundCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                        ToolTip="Tire au sort un de tes sons favoris ★ pour chaque catégorie."
+                        Command="{Binding DataContext.RandomizeCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
               </WrapPanel>
-              <TextBlock Text="Astuce : glisse un fichier audio sur une carte pour l'y assigner."
+              <TextBlock Text="Astuces : glisse un fichier audio sur une carte pour l'ajouter à sa catégorie, et marque tes préférés avec ★ pour le mode Aléatoire."
                          Foreground="{DynamicResource MutedBrush}" FontSize="11"
                          TextWrapping="Wrap" Margin="0,2,0,0"/>
               <TextBlock Text="{Binding DataContext.LibraryInfo, RelativeSource={RelativeSource AncestorType=Window}}"
@@ -694,7 +750,9 @@
                          FontSize="13" Margin="0,0,0,8" TextWrapping="Wrap"/>
               <TextBlock Text="3 · Tout est réversible avec « Tout restaurer »."
                          FontSize="13" Margin="0,0,0,8" TextWrapping="Wrap"/>
-              <TextBlock Text="4 · Essaie la voix V.E.R.I.S dans « Raccourcis » : le robot annonce tes événements."
+              <TextBlock Text="4 · Charge le profil « Voix VERIS » : le robot annonce tes événements."
+                         FontSize="13" Margin="0,0,0,8" TextWrapping="Wrap"/>
+              <TextBlock Text="5 · Ajoute tes sons avec + sur chaque carte, marque tes favoris ★, puis clique sur Aléatoire."
                          FontSize="13" TextWrapping="Wrap"/>
             </StackPanel>
 

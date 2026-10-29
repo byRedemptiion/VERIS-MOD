@@ -43,6 +43,9 @@ public sealed class LibrarySound
     public string Sha256 { get; set; } = "";
     public string AddedAt { get; set; } = "";
 
+    /// <summary>Catégorie (identifiant d'événement) à laquelle appartient le son. Vide = ancien son, proposé partout.</summary>
+    public string Category { get; set; } = "";
+
     [JsonExtensionData] public Dictionary<string, JsonElement>? Extra { get; set; }
 }
 
@@ -71,6 +74,9 @@ public sealed class AppSettings
     /// <summary>L'écran de bienvenue a déjà été affiché.</summary>
     public bool OnboardingDone { get; set; }
 
+    /// <summary>Sons favoris (★) par catégorie : identifiant d'événement → identifiants de sons.</summary>
+    public Dictionary<string, List<string>> Favorites { get; set; } = new();
+
     [JsonExtensionData] public Dictionary<string, JsonElement>? Extra { get; set; }
 }
 
@@ -89,6 +95,9 @@ public sealed class Profile
     public string Name { get; set; } = "";
     public string UpdatedAt { get; set; } = "";
     public List<ProfileTarget> Targets { get; set; } = new();
+
+    /// <summary>Profil intégré à VERIS MOD (non enregistré sur le disque, non supprimable).</summary>
+    [JsonIgnore] public bool IsBuiltin { get; set; }
 
     [JsonExtensionData] public Dictionary<string, JsonElement>? Extra { get; set; }
 }
@@ -164,7 +173,13 @@ public sealed record BackupCheck(bool Valid, string Reason);
 
 public enum SoundKind { Builtin, User }
 
-public sealed record SoundItem(string Id, string Name, string Path, SoundKind Kind)
+public sealed record SoundItem(string Id, string Name, string Path, SoundKind Kind, string Category = "")
 {
     public string DisplayName => Kind == SoundKind.User ? "Perso • " + Name : Name;
+
+    /// <summary>Libellé de la catégorie (pour la bibliothèque).</summary>
+    public string CategoryTitle =>
+        string.IsNullOrEmpty(Category) ? "toutes catégories" : (Audely.Services.EventCatalog.Find(Category)?.Title ?? Category);
+
+    public string LibraryName => DisplayName + "  —  " + CategoryTitle;
 }

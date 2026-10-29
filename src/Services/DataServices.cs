@@ -229,24 +229,32 @@ public static class ConfigService
 
 public static class LibraryService
 {
-    private static readonly (string Id, string Name, string File)[] Builtins =
+    // Voix V.E.R.I.S : une phrase par catégorie (le 4e champ est la catégorie, donc la carte, où elle apparaît).
+    private static readonly (string Id, string Name, string File, string Category)[] Builtins =
     {
-        ("builtin:pulse",  "Veris Pulse", "Audely_Pulse.wav"),
-        ("builtin:chime",  "Soft Chime",   "Soft_Chime.wav"),
-        ("builtin:pop",    "Digital Pop",  "Digital_Pop.wav"),
-        ("builtin:violet", "Violet Ping",  "Violet_Ping.wav"),
-        ("builtin:veris_message",   "Voix V.E.R.I.S • Nouveau message",   "Veris_Message.wav"),
-        ("builtin:veris_join",      "Voix V.E.R.I.S • Utilisateur rejoint", "Veris_Rejoint.wav"),
-        ("builtin:veris_leave",     "Voix V.E.R.I.S • Utilisateur parti",   "Veris_Parti.wav"),
-        ("builtin:veris_calling",   "Voix V.E.R.I.S • Appel en cours",      "Veris_Appel_Sortant.wav"),
-        ("builtin:veris_reconnect", "Voix V.E.R.I.S • Connexion en cours",   "Veris_Connexion.wav"),
-        ("builtin:veris_disconnect","Voix V.E.R.I.S • Déconnexion",         "Veris_Deconnexion.wav"),
-        ("builtin:veris_mute",      "Voix V.E.R.I.S • Micro coupé",         "Veris_Micro_Coupe.wav"),
-        ("builtin:veris_unmute",    "Voix V.E.R.I.S • Micro démuté",        "Veris_Micro_Active.wav"),
-        ("builtin:veris_deafen",    "Voix V.E.R.I.S • Casque coupé",        "Veris_Casque_Coupe.wav"),
-        ("builtin:veris_undeafen",  "Voix V.E.R.I.S • Son rétabli",         "Veris_Casque_Active.wav"),
-        ("builtin:veris_ringing",   "Voix V.E.R.I.S • Appel entrant",       "Veris_Appel_Entrant.wav"),
+        ("builtin:veris_message",   "Voix V.E.R.I.S • Nouveau message",     "Veris_Message.wav",      "message1"),
+        ("builtin:veris_join",      "Voix V.E.R.I.S • Utilisateur rejoint", "Veris_Rejoint.wav",      "user_join"),
+        ("builtin:veris_leave",     "Voix V.E.R.I.S • Utilisateur parti",   "Veris_Parti.wav",        "user_leave"),
+        ("builtin:veris_calling",   "Voix V.E.R.I.S • Appel en cours",      "Veris_Appel_Sortant.wav","call_calling"),
+        ("builtin:veris_ringing",   "Voix V.E.R.I.S • Appel entrant",       "Veris_Appel_Entrant.wav","call_ringing"),
+        ("builtin:veris_reconnect", "Voix V.E.R.I.S • Connexion en cours",  "Veris_Connexion.wav",    "reconnect"),
+        ("builtin:veris_disconnect","Voix V.E.R.I.S • Déconnexion",         "Veris_Deconnexion.wav",  "disconnect"),
+        ("builtin:veris_mute",      "Voix V.E.R.I.S • Micro coupé",         "Veris_Micro_Coupe.wav",  "mute"),
+        ("builtin:veris_unmute",    "Voix V.E.R.I.S • Micro démuté",        "Veris_Micro_Active.wav", "unmute"),
+        ("builtin:veris_deafen",    "Voix V.E.R.I.S • Casque coupé",        "Veris_Casque_Coupe.wav", "deafen"),
+        ("builtin:veris_undeafen",  "Voix V.E.R.I.S • Son rétabli",         "Veris_Casque_Active.wav","undeafen"),
     };
+
+    /// <summary>Le profil « Voix VERIS » : les 11 phrases du robot, une par événement.</summary>
+    public static Profile BuiltinProfile()
+    {
+        var profile = new Profile { Name = BuiltinProfileName, IsBuiltin = true };
+        foreach (var (id, name, _, category) in Builtins)
+            profile.Targets.Add(new ProfileTarget { Id = category, SourceId = id, SourceName = name, Volume = 100 });
+        return profile;
+    }
+
+    public const string BuiltinProfileName = "Voix VERIS";
 
     public static LibraryFile Read() =>
         JsonStore.TryRead<LibraryFile>(AppPaths.LibraryPath) ?? new LibraryFile();
@@ -261,31 +269,39 @@ public static class LibraryService
     {
         var items = new List<SoundItem>();
 
-        foreach (var (id, name, file) in Builtins)
+        foreach (var (id, name, file, category) in Builtins)
         {
             string p = Path.Combine(AppPaths.BuiltinSoundsDir, file);
-            if (File.Exists(p)) items.Add(new SoundItem(id, name, p, SoundKind.Builtin));
+            if (File.Exists(p)) items.Add(new SoundItem(id, name, p, SoundKind.Builtin, category));
         }
 
         foreach (LibrarySound s in Read().Sounds)
         {
             string p = AppPaths.FromData(s.File);
-            if (File.Exists(p)) items.Add(new SoundItem(s.Id, s.Name, p, SoundKind.User));
+            if (File.Exists(p)) items.Add(new SoundItem(s.Id, s.Name, p, SoundKind.User, s.Category ?? ""));
         }
 
         return items;
     }
 
-    /// <summary>Ajoute un fichier à la bibliothèque. Retourne le nom du son (existant ou nouveau).</summary>
-    public static string Import(string sourcePath)
+    /// <summary>Ajoute un fichier à la bibliothèque (sans catégorie). Retourne le nom du son.</summary>
+    public static string Import(string sourcePath) => ImportSound(sourcePath, "").Name;
+
+    /// <summary>
+    /// Ajoute un fichier à la bibliothèque, propre à une catégorie (identifiant d'événement).
+    /// Le même fichier peut exister dans plusieurs catégories : chacune a sa propre copie.
+    /// </summary>
+    public static LibrarySound ImportSound(string sourcePath, string category)
     {
         AudioFiles.Validate(sourcePath);
+        category = (category ?? "").Trim();
 
         string hash = Hashing.Sha256File(sourcePath);
         LibraryFile lib = Read();
 
-        LibrarySound? existing = lib.Sounds.FirstOrDefault(s => Hashing.SameHash(s.Sha256, hash));
-        if (existing != null) return existing.Name;
+        LibrarySound? existing = lib.Sounds.FirstOrDefault(s =>
+            Hashing.SameHash(s.Sha256, hash) && string.Equals(s.Category ?? "", category, StringComparison.Ordinal));
+        if (existing != null) return existing;
 
         string ext = Path.GetExtension(sourcePath).ToLowerInvariant();
         string baseName = Path.GetFileNameWithoutExtension(sourcePath);
@@ -294,7 +310,7 @@ public static class LibraryService
         string safe = new string(safeChars.ToArray()).Trim('_');
         if (string.IsNullOrWhiteSpace(safe)) safe = "sound";
 
-        string destName = hash[..12].ToLowerInvariant() + "_" + safe + ext;
+        string destName = hash[..12].ToLowerInvariant() + "_" + (category.Length > 0 ? category + "_" : "") + safe + ext;
         string dest = Path.Combine(AppPaths.LibraryDir, destName);
         File.Copy(sourcePath, dest, overwrite: true);
 
@@ -304,16 +320,18 @@ public static class LibraryService
             throw new InvalidOperationException("La copie dans la bibliothèque ne correspond pas au fichier source.");
         }
 
-        lib.Sounds.Add(new LibrarySound
+        var entry = new LibrarySound
         {
-            Id = "user:" + hash[..16].ToLowerInvariant(),
+            Id = "user:" + hash[..16].ToLowerInvariant() + (category.Length > 0 ? "@" + category : ""),
             Name = baseName,
             File = "library/" + destName,
             Sha256 = hash,
             AddedAt = DateTime.Now.ToString("o"),
-        });
+            Category = category,
+        };
+        lib.Sounds.Add(entry);
         Save(lib);
-        return baseName;
+        return entry;
     }
 
     public static void Rename(string soundId, string newName)
