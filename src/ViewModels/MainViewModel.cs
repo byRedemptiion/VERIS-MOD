@@ -86,6 +86,8 @@ public sealed class MainViewModel : ObservableObject
         ActivateCommand = new AsyncRelayCommand(() => ActivateAsync(confirm: true), () => CanActivate && !IsBusy, OnError);
         UninstallCommand = new AsyncRelayCommand(UninstallAsync, () => _snapshot.Core != null && (_snapshot.HookInstalled || _snapshot.OverlayHookInstalled) && !IsBusy, OnError);
         RandomizeCommand = new AsyncRelayCommand(RandomizeAsync, () => CanApplyAnything && !IsBusy, OnError);
+        ToggleRandomModeCommand = new AsyncRelayCommand(ToggleRandomModeAsync, () => CanApplyAnything && !IsBusy, OnError);
+        try { _randomEachEvent = ConfigService.ReadSettings().RandomEachEvent; } catch { }
         OpenLibraryCommand = new RelayCommand(() => _dialogs.ShowLibrary());
         OpenDiagnosticCommand = new RelayCommand(() => _dialogs.ShowDiagnostic());
         OpenAboutCommand = new RelayCommand(() => _dialogs.ShowAbout());
@@ -388,6 +390,7 @@ public sealed class MainViewModel : ObservableObject
     public ICommand ActivateCommand { get; }
     public ICommand UninstallCommand { get; }
     public ICommand RandomizeCommand { get; }
+    public ICommand ToggleRandomModeCommand { get; }
     public ICommand OpenLibraryCommand { get; }
     public ICommand OpenDiagnosticCommand { get; }
     public ICommand OpenAboutCommand { get; }
@@ -734,6 +737,7 @@ public sealed class MainViewModel : ObservableObject
                 HookService.InstallCore(core);
                 config();
                 ConfigService.SyncNeedles();
+                ConfigService.SyncRandomVariants();
                 HookService.InstallOverlay(core);
             }, "Installation de VERIS MOD dans Discord…", confirm: true);
         }
@@ -743,6 +747,7 @@ public sealed class MainViewModel : ObservableObject
             {
                 config();
                 ConfigService.SyncNeedles();
+                ConfigService.SyncRandomVariants();
             });
         }
 
@@ -814,6 +819,7 @@ public sealed class MainViewModel : ObservableObject
         try
         {
             ConfigService.RemoveTarget(card.Id);
+            try { ConfigService.SyncRandomVariants(); } catch { }
             AfterConfigChange();
         }
         catch (Exception ex) { _dialogs.Error(ex.Message, "VERIS MOD — restauration refusée"); }
@@ -824,6 +830,7 @@ public sealed class MainViewModel : ObservableObject
         try
         {
             ConfigService.ClearAll();
+            try { ConfigService.SyncRandomVariants(); } catch { }
             AfterConfigChange();
             ShowToast("Tous les sons utilisent de nouveau Discord natif. Ta bibliothèque est conservée.");
         }
@@ -1095,12 +1102,75 @@ public sealed class MainViewModel : ObservableObject
         {
             bool now = FavoritesService.Toggle(card.Id, sound.Id);
             card.SetFavorites(FavoritesService.Get(card.Id));
+            if (_randomEachEvent) ConfigService.SyncRandomVariants();    // les variantes suivent les favoris
             ShowToast(now
                 ? $"★ « {sound.Name} » est maintenant favori pour « {card.Title} »."
                 : $"« {sound.Name} » n'est plus favori.");
         }
         catch (Exception ex) { _dialogs.Error(ex.Message, "VERIS MOD — favoris"); }
     }
+
+    private bool _randomEachEvent;
+
+    /// <summary>Aléatoire à chaque événement actif : Discord joue un favori différent à chaque fois.</summary>
+    public bool RandomEachEvent => _randomEachEvent;
+    public string RandomModeText => _randomEachEvent ? "Aléatoire auto : ON" : "Aléatoire auto : OFF";
+
+    private void SetRandomFlag(bool on)
+    {
+        AppSettings settings = ConfigService.ReadSettings();
+        settings.RandomEachEvent = on;
+        ConfigService.SaveSettings(settings);
+        _randomEachEvent = on;
+        OnPropertyChanged(nameof(RandomEachEvent));
+        OnPropertyChanged(nameof(RandomModeText));
+    }
+
+    /// <summary>Active ou coupe l'aléatoire à chaque événement (favoris ★ de chaque catégorie).</summary>
+    private async Task ToggleRandomModeAsync()
+    {
+        if (_randomEachEvent)
+        {
+            SetRandomFlag(false);
+            await Task.Run(ConfigService.SyncRandomVariants);
+            ShowToast("Aléatoire auto désactivé : chaque catégorie rejoue le son choisi.");
+            return;
+        }
+
+        List<EventCardViewModel> eligible = AllCards.Where(c => c.Options.Count(o => o.IsFavorite) >= 2).ToList();
+        if (eligible.Count == 0)
+        {
+            ShowToast("Marque d'abord au moins 2 favoris ★ dans une catégorie, puis active « Aléatoire auto ».");
+            return;
+        }
+
+        SetRandomFlag(true);
+
+        // Les catégories qui n'ont encore aucun son appliqué reçoivent un favori tiré au hasard.
+        var random = new Random();
+        var picks = new List<(string Id, SoundItem Sound, int Volume)>();
+        foreach (EventCardViewModel card in eligible)
+        {
+            if (ConfigService.GetTarget(card.Id) != null) continue;
+            List<SoundOption> favorites = card.Options.Where(o => o.IsFavorite).ToList();
+            SoundItem pick = favorites[random.Next(favorites.Count)].Sound;
+            AudioFiles.Validate(pick.Path);
+            picks.Add((card.Id, pick, card.VolumeInt));
+        }
+
+        List<SoundItem> sounds = Sounds.ToList();
+        await ApplyAsync(() =>
+        {
+            try { ConfigService.RepairConfiguredFiles(sounds); } catch { }
+            foreach (var p in picks) ConfigService.SetTarget(p.Id, p.Sound, p.Volume);
+            ClearPausedFlag();
+        });
+        ShowToast($"Aléatoire auto activé sur {eligible.Count} catégorie(s). Si Discord est ouvert, relance-le une fois.");
+    }
+
+    /// <summary>Le script installé dans le dossier VERIS MOD vient d'être mis à jour : Discord doit le relire.</summary>
+    public void NotifyModuleUpdated() =>
+        ShowToast("Le module VERIS MOD de Discord a été mis à jour : relance Discord pour en profiter.");
 
     /// <summary>Tire au hasard un favori par catégorie (là où il y en a) et l'applique d'un coup.</summary>
     private async Task RandomizeAsync()

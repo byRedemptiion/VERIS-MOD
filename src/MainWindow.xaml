@@ -317,6 +317,9 @@
               <Button Content="Aléatoire" Style="{StaticResource NavButtonStyle}"
                       Command="{Binding RandomizeCommand}"
                       ToolTip="Tire au sort un son favori ★ par catégorie."/>
+              <Button Content="{Binding RandomModeText}" Style="{StaticResource NavButtonStyle}"
+                      Command="{Binding ToggleRandomModeCommand}"
+                      ToolTip="Un favori ★ différent à chaque message, appel, micro… (au moins 2 favoris dans la catégorie)."/>
               <Button Content="Tout restaurer" Style="{StaticResource NavButtonStyle}"
                       Command="{Binding RestoreAllCommand}"/>
               <Button Content="Activer" Style="{StaticResource NavButtonStyle}"

@@ -6,7 +6,7 @@ const ROOT = __dirname;
 const CONFIG = path.join(ROOT, "runtime-config.json");
 const LOG = path.join(ROOT, "runtime-loader.log");
 const MAX_BYTES = 5 * 1024 * 1024;
-const LOADER_VERSION = "1.3.7";
+const LOADER_VERSION = "1.4.0";
 
 function log(message) {
   try {
@@ -93,6 +93,40 @@ function readPayload() {
         volume: volume / 100
       };
 
+      // V1.4.0 : « aléatoire à chaque événement ». Si la cible porte plusieurs variantes (les favoris),
+      // on les charge toutes ; le renderer en tire une au hasard à chaque lecture.
+      // Sans variantes, rien ne change : le son unique ci-dessus est joué comme avant.
+      if (target.random === true && Array.isArray(target.variants) && target.variants.length >= 2) {
+        const variants = [];
+        let totalBytes = 0;
+
+        for (const v of target.variants.slice(0, 8)) {
+          try {
+            const vfile = path.resolve(ROOT, String(v && v.file || ""));
+            if (!vfile.startsWith(ROOT) || !fs.existsSync(vfile)) continue;
+
+            const vst = fs.statSync(vfile);
+            if (!vst.isFile() || vst.size <= 0 || vst.size > MAX_BYTES) continue;
+
+            totalBytes += vst.size;
+            if (totalBytes > 12 * 1024 * 1024) break;
+
+            variants.push({
+              mime: mimeFor(vfile),
+              b64: fs.readFileSync(vfile).toString("base64"),
+              sha256: String(v.sha256 || "")
+            });
+          } catch (variantError) {
+            log(`skip variant target=${id}: ${variantError?.message || variantError}`);
+          }
+        }
+
+        if (variants.length >= 2) {
+          payload.sounds[id].variants = variants;
+          log(`variants target=${id} count=${variants.length}`);
+        }
+      }
+
       for (const needle of target.needles) {
         if (typeof needle === "string" && needle.length > 0) {
           payload.needles[needle.toLowerCase()] = id;
@@ -120,6 +154,35 @@ function buildRendererCode(payload) {
     globalThis.__AUDELY_SAFE_NEEDLES = incoming.needles || {};
     globalThis.__AUDELY_BLOB_CACHE = globalThis.__AUDELY_BLOB_CACHE || {};
     globalThis.__AUDELY_TRACE_SEEN = globalThis.__AUDELY_TRACE_SEEN || new Set();
+    globalThis.__AUDELY_LAST_VARIANT = globalThis.__AUDELY_LAST_VARIANT || {};
+
+    // V1.4.0 : choisit une variante au hasard (jamais deux fois la même d'affilée).
+    // Retourne un son prêt à jouer ; sans variantes, retourne le son tel quel.
+    globalThis.__AUDELY_PICK = sound => {
+      try {
+        const variants = sound && sound.variants;
+        if (!Array.isArray(variants) || variants.length < 2) return sound;
+
+        const id = String(sound.target || "");
+        const last = Number(globalThis.__AUDELY_LAST_VARIANT[id]);
+        let index = Math.floor(Math.random() * variants.length);
+        if (index === last) {
+          index = (index + 1 + Math.floor(Math.random() * (variants.length - 1))) % variants.length;
+        }
+        globalThis.__AUDELY_LAST_VARIANT[id] = index;
+
+        const v = variants[index];
+        return {
+          target: id + "#" + index,
+          mime: v.mime,
+          b64: v.b64,
+          sha256: v.sha256,
+          volume: sound.volume
+        };
+      } catch {
+        return sound;
+      }
+    };
 
     const trace = message => {
       try {
@@ -231,7 +294,7 @@ function buildRendererCode(payload) {
       if (targetId === "message1") globalThis.__AUDELY_MESSAGE_LAST_PLAY = now;
 
       try {
-        const url = audelyMakeBlobUrl(sound);
+        const url = audelyMakeBlobUrl(globalThis.__AUDELY_PICK(sound));
         const audio = new Audio();
         audio.src = url;
         audio.volume = Math.max(0, Math.min(1, Number(sound.volume)));
@@ -1884,7 +1947,7 @@ function buildRendererCode(payload) {
 
         let blobUrl;
         try {
-          blobUrl = makeBlobUrl(match.sound);
+          blobUrl = makeBlobUrl(globalThis.__AUDELY_PICK(match.sound));
         } catch (error) {
           trace(
             "BLOB_ERROR target=" + String(match.sound.target || "") +

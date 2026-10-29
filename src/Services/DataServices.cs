@@ -165,6 +165,68 @@ public static class ConfigService
         Save(cfg);
     }
 
+    /// <summary>
+    /// Prépare l'aléatoire à chaque événement : pour chaque catégorie configurée qui a au moins 2 favoris,
+    /// copie les favoris à côté du son principal et les déclare comme variantes. Désactivé : tout est nettoyé.
+    /// </summary>
+    public static void SyncRandomVariants()
+    {
+        AppSettings settings = ReadSettings();
+        RuntimeConfig cfg = Read();
+        List<SoundItem> sounds = LibraryService.GetAvailable();
+        var kept = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (TargetEntry t in cfg.Targets)
+        {
+            var wanted = new List<SoundItem>();
+            if (settings.RandomEachEvent && settings.Favorites != null &&
+                settings.Favorites.TryGetValue(t.Id, out List<string>? ids))
+            {
+                foreach (string id in ids)
+                {
+                    SoundItem? s = sounds.FirstOrDefault(x => x.Id == id);
+                    if (s != null && File.Exists(s.Path)) wanted.Add(s);
+                    if (wanted.Count == 8) break;
+                }
+            }
+
+            var variants = new List<VariantEntry>();
+            if (wanted.Count >= 2)
+            {
+                for (int i = 0; i < wanted.Count; i++)
+                {
+                    AudioFiles.Validate(wanted[i].Path);
+                    string name = t.Id + "__v" + i + Path.GetExtension(wanted[i].Path).ToLowerInvariant();
+                    string dest = Path.Combine(AppPaths.SoundsDir, name);
+                    File.Copy(wanted[i].Path, dest, overwrite: true);
+
+                    string hash = Hashing.Sha256File(dest);
+                    if (!Hashing.SameHash(hash, Hashing.Sha256File(wanted[i].Path)))
+                        throw new InvalidOperationException("La copie d'un favori n'est pas identique à la source.");
+
+                    variants.Add(new VariantEntry { File = "sounds/" + name, Sha256 = hash });
+                    kept.Add(name);
+                }
+            }
+
+            t.RandomEnabled = variants.Count >= 2;
+            t.Variants = variants;
+        }
+
+        // Variantes orphelines (catégorie restaurée, favori retiré, mode désactivé) : nettoyage.
+        try
+        {
+            foreach (string file in Directory.EnumerateFiles(AppPaths.SoundsDir, "*__v*.*"))
+                if (!kept.Contains(Path.GetFileName(file)))
+                {
+                    try { File.Delete(file); } catch { }
+                }
+        }
+        catch { }
+
+        Save(cfg);
+    }
+
     /// <summary>Met à jour les needles des cibles configurées (Sync-AudelyConfiguredNeedles).</summary>
     public static void SyncNeedles()
     {

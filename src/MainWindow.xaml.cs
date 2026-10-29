@@ -60,6 +60,7 @@ public partial class MainWindow : Window
             try
             {
                 await _vm.ScanAsync();
+                if (HookService.RefreshLoaderIfStale()) _vm.NotifyModuleUpdated();
                 await _vm.ShowOnboardingAsync();      // écran de bienvenue (tout premier lancement)
                 await _vm.OfferActivationAsync();   // première utilisation / Discord mis à jour
                 _ = _vm.CheckForUpdateAsync(manual: false);   // mise à jour GitHub (silencieux)

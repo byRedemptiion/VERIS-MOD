@@ -24,7 +24,19 @@ public sealed class TargetEntry
     public string Mime { get; set; } = "";
     public int Volume { get; set; } = 100;
 
+    /// <summary>« Aléatoire à chaque événement » : le script de Discord tire une des variantes à chaque lecture.</summary>
+    [JsonPropertyName("random")] public bool RandomEnabled { get; set; }
+
+    /// <summary>Les favoris de la catégorie (au moins 2) quand l'aléatoire à chaque événement est actif.</summary>
+    public List<VariantEntry> Variants { get; set; } = new();
+
     [JsonExtensionData] public Dictionary<string, JsonElement>? Extra { get; set; }
+}
+
+public sealed class VariantEntry
+{
+    public string File { get; set; } = "";
+    public string Sha256 { get; set; } = "";
 }
 
 public sealed class RuntimeConfig
@@ -76,6 +88,9 @@ public sealed class AppSettings
 
     /// <summary>Sons favoris (★) par catégorie : identifiant d'événement → identifiants de sons.</summary>
     public Dictionary<string, List<string>> Favorites { get; set; } = new();
+
+    /// <summary>Aléatoire à chaque événement : un favori différent est joué à chaque message, appel, etc.</summary>
+    public bool RandomEachEvent { get; set; }
 
     [JsonExtensionData] public Dictionary<string, JsonElement>? Extra { get; set; }
 }

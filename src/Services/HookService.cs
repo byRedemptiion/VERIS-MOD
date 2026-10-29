@@ -62,6 +62,24 @@ public static class HookService
         return LoaderPath;
     }
 
+    /// <summary>
+    /// Met à jour le script déjà installé (dans le dossier de VERIS MOD, pas dans Discord) quand l'application
+    /// en apporte une version plus récente. Retourne vrai s'il a changé : Discord doit alors être relancé.
+    /// </summary>
+    public static bool RefreshLoaderIfStale()
+    {
+        try
+        {
+            if (!File.Exists(LoaderPath)) return false;          // jamais installé : rien à mettre à jour
+            string fresh = ReadEmbedded("Audely.Js.audely_runtime_loader.js");
+            string current = File.ReadAllText(LoaderPath, Utf8NoBom);
+            if (string.Equals(current, fresh, StringComparison.Ordinal)) return false;
+            File.WriteAllText(LoaderPath, fresh, Utf8NoBom);
+            return true;
+        }
+        catch { return false; }
+    }
+
     private static string WriteOverlayPreload(OverlayInfo overlay)
     {
         string text = ReadEmbedded("Audely.Js.audely_overlay_preload.js");

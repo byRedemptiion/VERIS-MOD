@@ -1,1 +1,1 @@
-Profil intégré « Voix VERIS », sons propres à chaque catégorie (bouton + sur chaque carte), favoris ★ et mode Aléatoire, « Nouveau message » dans le panneau de droite et « Appel entrant » dans la liste. Anciens sons de base retirés.
+Aléatoire auto : un favori ★ différent à chaque message, appel, micro… (bouton « Aléatoire auto » dans le menu, désactivé par défaut). Relance Discord une fois après la mise à jour.
