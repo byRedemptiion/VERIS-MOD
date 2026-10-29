@@ -1,0 +1,582 @@
+<Window x:Class="Audely.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
+        xmlns:vm="clr-namespace:Audely.ViewModels"
+        Title="VERIS MOD — byRedemptiion"
+        Icon="pack://application:,,,/Assets/Audely.ico"
+        Height="920" Width="1520" MinHeight="790" MinWidth="1180"
+        WindowStartupLocation="CenterScreen"
+        WindowStyle="None" ResizeMode="CanResize"
+        AllowsTransparency="True"
+        FontFamily="Segoe UI Variable Display, Segoe UI"
+        UseLayoutRounding="True" SnapsToDevicePixels="True"
+        TextOptions.TextFormattingMode="Ideal"
+        Background="Transparent" Foreground="{DynamicResource TextBrush}">
+
+  <shell:WindowChrome.WindowChrome>
+    <shell:WindowChrome CaptionHeight="64" ResizeBorderThickness="6"
+                        GlassFrameThickness="0" CornerRadius="0"
+                        UseAeroCaptionButtons="False"/>
+  </shell:WindowChrome.WindowChrome>
+
+  <Window.Resources>
+    <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+
+    <!-- Carte d'événement : une seule définition pour les 10 cartes (2 colonnes × 5 lignes). -->
+    <DataTemplate x:Key="EventCardTemplate" DataType="{x:Type vm:EventCardViewModel}">
+      <Border Style="{StaticResource SoundCardStyle}" ToolTip="{Binding Description}">
+        <Grid>
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+          </Grid.RowDefinitions>
+
+          <!-- Icône · titre · pastille d'état -->
+          <Grid>
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="Auto"/>
+              <ColumnDefinition Width="*"/>
+              <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <Border Width="30" Height="30" CornerRadius="9"
+                    Background="{Binding IconBg}" BorderBrush="{Binding IconBorder}"
+                    BorderThickness="1">
+              <TextBlock Text="{Binding Icon}" Foreground="{Binding IconFg}"
+                         FontSize="15" FontWeight="Bold"
+                         HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </Border>
+            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="10,0,8,0">
+              <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="Bold"
+                         TextTrimming="CharacterEllipsis"/>
+              <TextBlock Text="{Binding Id}" FontSize="11"
+                         Foreground="{DynamicResource MutedBrush}"/>
+            </StackPanel>
+            <Border Grid.Column="2" CornerRadius="10" Padding="9,3"
+                    VerticalAlignment="Center" ToolTip="{Binding StateText}">
+              <Border.Style>
+                <Style TargetType="Border">
+                  <Setter Property="Background" Value="{DynamicResource FieldBrush}"/>
+                  <Style.Triggers>
+                    <DataTrigger Binding="{Binding IsConfigured}" Value="True">
+                      <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
+                    </DataTrigger>
+                  </Style.Triggers>
+                </Style>
+              </Border.Style>
+              <TextBlock Text="{Binding ChipText}" FontSize="11" FontWeight="Bold">
+                <TextBlock.Style>
+                  <Style TargetType="TextBlock">
+                    <Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/>
+                    <Style.Triggers>
+                      <DataTrigger Binding="{Binding IsConfigured}" Value="True">
+                        <Setter Property="Foreground" Value="{DynamicResource Accent2Brush}"/>
+                      </DataTrigger>
+                    </Style.Triggers>
+                  </Style>
+                </TextBlock.Style>
+              </TextBlock>
+            </Border>
+          </Grid>
+
+          <!-- Choix du son -->
+          <ComboBox Grid.Row="1" Margin="0,9,0,9"
+                    ItemsSource="{Binding Sounds}"
+                    SelectedItem="{Binding SelectedSound, Mode=TwoWay}">
+            <ComboBox.ItemTemplate>
+              <DataTemplate>
+                <TextBlock Text="{Binding DisplayName}"/>
+              </DataTemplate>
+            </ComboBox.ItemTemplate>
+          </ComboBox>
+
+          <!-- ▶ · volume · Appliquer · restaurer -->
+          <Grid Grid.Row="2">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="Auto"/>
+              <ColumnDefinition Width="*"/>
+              <ColumnDefinition Width="46"/>
+              <ColumnDefinition Width="Auto"/>
+              <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <Button Content="▶" Style="{StaticResource IconButtonStyle}" Width="28"
+                    Command="{Binding TestCommand}" ToolTip="Tester le son"/>
+            <Slider Grid.Column="1" Minimum="0" Maximum="100" TickFrequency="5"
+                    IsMoveToPointEnabled="True" VerticalAlignment="Center" Margin="10,0,6,0"
+                    Foreground="{Binding IconFg}"
+                    Value="{Binding Volume, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+            <TextBlock Grid.Column="2" Text="{Binding VolumeText}" FontSize="12" FontWeight="Bold"
+                       Foreground="{DynamicResource Accent2Brush}"
+                       VerticalAlignment="Center" TextAlignment="Right"/>
+            <Button Grid.Column="3" Content="Appliquer" Style="{StaticResource ApplyButtonStyle}"
+                    Margin="10,0,6,0" Command="{Binding ApplyCommand}"/>
+            <Button Grid.Column="4" Content="↺" Style="{StaticResource IconButtonStyle}" Width="28"
+                    Command="{Binding RestoreCommand}"
+                    ToolTip="Restaurer le son Discord d'origine"/>
+          </Grid>
+        </Grid>
+      </Border>
+    </DataTemplate>
+  </Window.Resources>
+
+  <Border x:Name="RootBorder" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
+          CornerRadius="18" Background="{DynamicResource BgBrush}">
+    <Grid>
+      <Grid.RowDefinitions>
+        <RowDefinition Height="64"/>
+        <RowDefinition Height="*"/>
+        <RowDefinition Height="42"/>
+      </Grid.RowDefinitions>
+
+      <!-- Fond personnalisé facultatif (background.png/jpg/jpeg/webp), 8 % d'opacité, jamais de voile. -->
+      <Image x:Name="BackgroundArtwork" Grid.Row="0" Grid.RowSpan="3"
+             Stretch="UniformToFill" Opacity="0.08" IsHitTestVisible="False"/>
+
+      <!-- ===================== En-tête ===================== -->
+      <Grid Grid.Row="0" Panel.ZIndex="10">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="Auto"/>
+          <ColumnDefinition Width="*"/>
+          <ColumnDefinition Width="Auto"/>
+        </Grid.ColumnDefinitions>
+        <Border Grid.ColumnSpan="3" Background="{DynamicResource PanelBrush}" CornerRadius="17,17,0,0"/>
+
+        <StackPanel Orientation="Horizontal" Margin="16,0,0,0" VerticalAlignment="Center">
+          <!-- Mascotte V.E.R.I.S -->
+          <Border Width="46" Height="46" CornerRadius="12" Background="{DynamicResource FieldBrush}"
+                  BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1.2">
+            <Border.Effect>
+              <DropShadowEffect Color="{DynamicResource AccentColor}" BlurRadius="16"
+                                ShadowDepth="0" Opacity="0.4"/>
+            </Border.Effect>
+            <Image x:Name="MascotImage" Stretch="Uniform" Margin="4"/>
+          </Border>
+
+          <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
+            <StackPanel Orientation="Horizontal">
+              <TextBlock FontFamily="{DynamicResource DisplayFont}"
+                         FontSize="{DynamicResource WordSize}" FontWeight="ExtraBold"
+                         VerticalAlignment="Center">
+                <Run Text="VERIS"/><Run Text=" MOD" Foreground="{DynamicResource Accent2Brush}"/>
+              </TextBlock>
+              <TextBlock Text="{Binding VersionText}" FontSize="11"
+                         Foreground="{DynamicResource MutedBrush}"
+                         VerticalAlignment="Center" Margin="9,3,0,0"/>
+              <Border Visibility="{Binding HasBadge, Converter={StaticResource BoolToVis}}"
+                      Background="{DynamicResource AccentFillBrush}" CornerRadius="9"
+                      Padding="8,2" Margin="9,3,0,0" VerticalAlignment="Center">
+                <TextBlock Text="{Binding Badge}" FontSize="10" FontWeight="ExtraBold"
+                           Foreground="{DynamicResource OnAccentBrush}"/>
+              </Border>
+            </StackPanel>
+            <TextBlock Text="{Binding ThemeName, StringFormat='byRedemptiion · ambiance {0}'}"
+                       FontStyle="Italic" FontSize="11" Foreground="{DynamicResource MutedBrush}"/>
+          </StackPanel>
+        </StackPanel>
+
+        <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center"
+                    Margin="0,0,12,0">
+          <Border Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource LineBrush}"
+                  BorderThickness="1" CornerRadius="10" Padding="13,6" Margin="0,0,10,0">
+            <StackPanel Orientation="Horizontal">
+              <Ellipse Width="8" Height="8" Fill="{Binding GlobalStatusBrush}"
+                       Margin="0,0,9,0" VerticalAlignment="Center"/>
+              <StackPanel>
+                <TextBlock Text="{Binding GlobalStatusText}" FontSize="12" FontWeight="Bold"/>
+                <TextBlock Text="{Binding GlobalStatusSub}" FontSize="11"
+                           Foreground="{DynamicResource MutedBrush}"/>
+              </StackPanel>
+            </StackPanel>
+          </Border>
+          <Button Content="Réparer" Command="{Binding RepairCommand}"
+                  Style="{StaticResource PrimaryButtonStyle}" Margin="0,0,8,0" Height="34"
+                  shell:WindowChrome.IsHitTestVisibleInChrome="True"
+                  ToolTip="Réinstalle VERIS MOD après une mise à jour de Discord."/>
+          <Button Content="{Binding PauseText}" Command="{Binding PauseCommand}"
+                  Margin="0,0,10,0" Height="34" MinWidth="74"
+                  shell:WindowChrome.IsHitTestVisibleInChrome="True"
+                  ToolTip="Retire temporairement VERIS MOD de Discord (ou le réactive)."/>
+          <Button x:Name="MinimizeButton" Style="{StaticResource WindowButtonStyle}"
+                  Content="—" Width="38" Height="30" Padding="0" Margin="0,0,3,0"
+                  shell:WindowChrome.IsHitTestVisibleInChrome="True" ToolTip="Réduire"/>
+          <Button x:Name="MaximizeButton" Style="{StaticResource WindowButtonStyle}"
+                  Content="□" Width="38" Height="30" Padding="0" Margin="0,0,3,0"
+                  shell:WindowChrome.IsHitTestVisibleInChrome="True" ToolTip="Agrandir"/>
+          <Button x:Name="CloseButton" Style="{StaticResource CloseButtonStyle}"
+                  Content="✕" Width="38" Height="30" Padding="0"
+                  shell:WindowChrome.IsHitTestVisibleInChrome="True" ToolTip="Fermer"/>
+        </StackPanel>
+
+        <Border Grid.ColumnSpan="3" Height="1" VerticalAlignment="Bottom"
+                Background="{DynamicResource LineBrush}" IsHitTestVisible="False"/>
+      </Grid>
+
+      <!-- ===================== Espace de travail ===================== -->
+      <Grid Grid.Row="1" Margin="14,12,14,12">
+        <Grid.ColumnDefinitions>
+          <ColumnDefinition Width="176"/>
+          <ColumnDefinition Width="*"/>
+          <ColumnDefinition Width="324"/>
+        </Grid.ColumnDefinitions>
+
+        <!-- Navigation -->
+        <Border Grid.Column="0" Style="{StaticResource PanelStyle}" Margin="0,0,12,0">
+          <Grid>
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto"/>
+              <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <StackPanel>
+              <TextBlock Text="NAVIGATION" Foreground="{DynamicResource MutedBrush}" FontSize="11"
+                         FontWeight="ExtraBold" Margin="8,2,0,7"/>
+              <Button Content="Scanner Discord" Style="{StaticResource NavButtonStyle}"
+                      Command="{Binding ScanCommand}"/>
+              <Button Content="Sons" Style="{StaticResource ActiveNavButtonStyle}"
+                      IsHitTestVisible="False"/>
+              <Button Content="Bibliothèque" Style="{StaticResource NavButtonStyle}"
+                      Command="{Binding OpenLibraryCommand}"/>
+              <Button Content="Détecter les sons" Style="{StaticResource NavButtonStyle}"
+                      Command="{Binding DetectAliasesCommand}"/>
+              <Button Content="Diagnostic" Style="{StaticResource NavButtonStyle}"
+                      Command="{Binding OpenDiagnosticCommand}"/>
+
+              <Border Height="1" Background="{DynamicResource LineBrush}" Margin="4,10"/>
+
+              <TextBlock Text="OUTILS" Foreground="{DynamicResource MutedBrush}" FontSize="11"
+                         FontWeight="ExtraBold" Margin="8,0,0,7"/>
+              <Button Content="Tout appliquer" Style="{StaticResource NavButtonStyle}"
+                      Command="{Binding ApplyAllCommand}"/>
+              <Button Content="Tout restaurer" Style="{StaticResource NavButtonStyle}"
+                      Command="{Binding RestoreAllCommand}"/>
+              <Button Content="Activer" Style="{StaticResource NavButtonStyle}"
+                      Command="{Binding ActivateCommand}"
+                      ToolTip="Installe VERIS MOD dans Discord (Discord est fermé puis relancé)."/>
+              <Button Content="Désinstaller" Style="{StaticResource NavButtonStyle}"
+                      Command="{Binding UninstallCommand}"
+                      ToolTip="Restaure les fichiers originaux de Discord."/>
+              <Button Content="Mises à jour" Style="{StaticResource NavButtonStyle}"
+                      Command="{Binding CheckUpdateCommand}"
+                      ToolTip="Vérifie si une nouvelle version de VERIS MOD est disponible."/>
+            </StackPanel>
+
+            <Border Grid.Row="1" VerticalAlignment="Bottom" Margin="0,8,0,0"
+                    Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource LineBrush}"
+                    BorderThickness="1" CornerRadius="14" Padding="11" Cursor="Hand"
+                    ToolTip="Ouvrir le diagnostic VERIS MOD">
+              <Border.InputBindings>
+                <MouseBinding Gesture="LeftClick" Command="{Binding OpenDiagnosticCommand}"/>
+              </Border.InputBindings>
+              <StackPanel>
+                <StackPanel Orientation="Horizontal">
+                  <Ellipse Width="8" Height="8" Fill="{Binding HookPanelDot}"
+                           Margin="0,0,8,0" VerticalAlignment="Center"/>
+                  <TextBlock Text="{Binding HookPanelTitle}" FontWeight="Bold" FontSize="12"/>
+                </StackPanel>
+                <TextBlock Text="Core · Overlay · Sauvegarde" Foreground="{DynamicResource MutedBrush}"
+                           FontSize="11" TextWrapping="Wrap" Margin="0,5,0,0"/>
+                <TextBlock Text="Diagnostic ›" Foreground="{DynamicResource Accent2Brush}" FontSize="11"
+                           FontWeight="Bold" Margin="0,5,0,0"/>
+              </StackPanel>
+            </Border>
+          </Grid>
+        </Border>
+
+        <!-- Centre -->
+        <Grid Grid.Column="1" Margin="0,0,12,0">
+          <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+          </Grid.RowDefinitions>
+
+          <Grid Margin="4,0,4,10">
+            <Grid.ColumnDefinitions>
+              <ColumnDefinition Width="*"/>
+              <ColumnDefinition Width="Auto"/>
+            </Grid.ColumnDefinitions>
+            <StackPanel VerticalAlignment="Center">
+              <TextBlock Text="Sons Discord" FontFamily="{DynamicResource DisplayFont}"
+                         FontSize="{DynamicResource H1Size}" FontWeight="ExtraBold"/>
+              <TextBlock Text="Un son et un volume par événement. Réversible en un clic."
+                         Foreground="{DynamicResource MutedBrush}" FontSize="12" Margin="0,3,0,0"/>
+            </StackPanel>
+
+            <Border Grid.Column="1" Background="{DynamicResource PanelBrush}"
+                    BorderBrush="{DynamicResource LineBrush}"
+                    BorderThickness="1" CornerRadius="12" Padding="8,7" VerticalAlignment="Center">
+              <StackPanel Orientation="Horizontal">
+                <TextBlock Text="Profil" Foreground="{DynamicResource MutedBrush}" FontSize="12"
+                           VerticalAlignment="Center" Margin="3,0,8,0"/>
+                <ComboBox Width="150" MinHeight="30" ItemsSource="{Binding Profiles}"
+                          SelectedItem="{Binding SelectedProfile, Mode=TwoWay}">
+                  <ComboBox.ItemTemplate>
+                    <DataTemplate>
+                      <TextBlock Text="{Binding Name}"/>
+                    </DataTemplate>
+                  </ComboBox.ItemTemplate>
+                </ComboBox>
+                <Button Content="Sauver" Style="{StaticResource CompactButtonStyle}"
+                        Margin="8,0,0,0" Height="30" Command="{Binding SaveProfileCommand}"/>
+                <Button Content="Charger" Style="{StaticResource CompactButtonStyle}"
+                        Margin="8,0,0,0" Height="30" Command="{Binding LoadProfileCommand}"/>
+                <Button Content="×" Style="{StaticResource IconButtonStyle}" Height="30"
+                        Margin="8,0,0,0" Command="{Binding DeleteProfileCommand}"
+                        ToolTip="Supprimer le profil"/>
+              </StackPanel>
+            </Border>
+          </Grid>
+
+          <StackPanel Grid.Row="1">
+            <Border Visibility="{Binding HasUpdate, Converter={StaticResource BoolToVis}}"
+                    Background="{DynamicResource AccentSoftBrush}"
+                    BorderBrush="{DynamicResource AccentLineBrush}" BorderThickness="1"
+                    CornerRadius="12" Padding="14,10" Margin="4,0,4,10">
+              <Grid>
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="*"/>
+                  <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel VerticalAlignment="Center">
+                  <TextBlock Text="{Binding UpdateTitle}" FontSize="13" FontWeight="Bold"
+                             Foreground="{DynamicResource Accent2Brush}"/>
+                  <TextBlock Text="{Binding UpdateNotes}" FontSize="11" TextWrapping="Wrap"
+                             Foreground="{DynamicResource MutedBrush}" Margin="0,2,0,0"/>
+                  <TextBlock Text="{Binding UpdateProgressText}" FontSize="11" Margin="0,4,0,0"
+                             Foreground="{DynamicResource Accent2Brush}"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                  <Button Content="Plus tard" Style="{StaticResource CompactButtonStyle}" Height="32"
+                          Margin="0,0,8,0" Command="{Binding DismissUpdateCommand}"/>
+                  <Button Content="Mettre à jour" Style="{StaticResource PrimaryButtonStyle}" Height="32"
+                          Command="{Binding UpdateNowCommand}"/>
+                </StackPanel>
+              </Grid>
+            </Border>
+            <Border Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}"
+                    Background="{DynamicResource AccentSoftBrush}"
+                    BorderBrush="{DynamicResource AccentLineBrush}" BorderThickness="1"
+                    CornerRadius="10" Padding="12,8" Margin="4,0,4,10">
+              <StackPanel>
+                <TextBlock Text="{Binding BusyText}" FontSize="12" FontWeight="SemiBold"
+                           Foreground="{DynamicResource Accent2Brush}"/>
+                <ProgressBar IsIndeterminate="True" Height="3" Margin="0,7,0,0" BorderThickness="0"/>
+              </StackPanel>
+            </Border>
+            <Border Visibility="{Binding HasNotice, Converter={StaticResource BoolToVis}}"
+                    Background="#26F2C94C" BorderBrush="#77F2C94C" BorderThickness="1"
+                    CornerRadius="10" Padding="12,8" Margin="4,0,4,10">
+              <TextBlock Text="{Binding Notice}" FontSize="12" TextWrapping="Wrap"/>
+            </Border>
+          </StackPanel>
+
+          <Border Grid.Row="2" Style="{StaticResource PanelStyle}" Padding="6">
+            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+              <ItemsControl ItemsSource="{Binding Cards}"
+                            ItemTemplate="{StaticResource EventCardTemplate}">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <UniformGrid Columns="2"/>
+                  </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+              </ItemsControl>
+            </ScrollViewer>
+          </Border>
+        </Grid>
+
+        <!-- Droite : appel entrant -->
+        <Border Grid.Column="2" Style="{StaticResource PanelStyle}" Padding="16"
+                DataContext="{Binding Featured}">
+          <Grid>
+            <Grid.RowDefinitions>
+              <RowDefinition Height="Auto"/>
+              <RowDefinition Height="150"/>
+              <RowDefinition Height="Auto"/>
+              <RowDefinition Height="Auto"/>
+              <RowDefinition Height="Auto"/>
+              <RowDefinition Height="*"/>
+              <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
+
+            <Grid>
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="Auto"/>
+              </Grid.ColumnDefinitions>
+              <StackPanel>
+                <TextBlock Text="Appel entrant" FontFamily="{DynamicResource DisplayFont}"
+                           FontSize="{DynamicResource H2Size}" FontWeight="ExtraBold"/>
+                <TextBlock Text="{Binding Id}" Foreground="{DynamicResource MutedBrush}"
+                           FontSize="11" Margin="0,2,0,0"/>
+              </StackPanel>
+              <Border Grid.Column="1" Background="{DynamicResource AccentSoftBrush}"
+                      BorderBrush="{DynamicResource AccentLineBrush}" BorderThickness="1"
+                      CornerRadius="8" Padding="9,4" VerticalAlignment="Top">
+                <TextBlock Text="APERÇU" Foreground="{DynamicResource Accent2Brush}"
+                           FontSize="11" FontWeight="ExtraBold"/>
+              </Border>
+            </Grid>
+
+            <!-- Aperçu : bouton lecture + onde -->
+            <Border Grid.Row="1" Margin="0,12,0,12" CornerRadius="14"
+                    Background="{DynamicResource AccentSoftBrush}"
+                    BorderBrush="{DynamicResource AccentLineBrush}" BorderThickness="1">
+              <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                <Button Width="56" Height="56" Command="{Binding TestCommand}"
+                        ToolTip="Lire l'aperçu" Padding="0">
+                  <Button.Template>
+                    <ControlTemplate TargetType="Button">
+                      <Grid>
+                        <Ellipse x:Name="Disc" Fill="{DynamicResource AccentFillBrush}"/>
+                        <TextBlock Text="▶" FontSize="20" Foreground="{DynamicResource OnAccentBrush}"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"
+                                   Margin="4,0,0,0"/>
+                      </Grid>
+                      <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                          <Setter TargetName="Disc" Property="Opacity" Value="0.88"/>
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                          <Setter TargetName="Disc" Property="Opacity" Value="0.4"/>
+                        </Trigger>
+                      </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                  </Button.Template>
+                </Button>
+                <TextBlock Text="▁▃▆▂▅▇▃▆▂▅▇▃▁" FontFamily="Consolas" FontSize="15"
+                           Foreground="{DynamicResource Accent2Brush}"
+                           HorizontalAlignment="Center" Margin="0,14,0,0"/>
+              </StackPanel>
+            </Border>
+
+            <ComboBox Grid.Row="2" MinHeight="34" FontSize="13" ItemsSource="{Binding Sounds}"
+                      SelectedItem="{Binding SelectedSound, Mode=TwoWay}">
+              <ComboBox.ItemTemplate>
+                <DataTemplate>
+                  <TextBlock Text="{Binding DisplayName}"/>
+                </DataTemplate>
+              </ComboBox.ItemTemplate>
+            </ComboBox>
+
+            <Grid Grid.Row="3" Margin="0,12,0,0">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="Auto"/>
+                <ColumnDefinition Width="*"/>
+                <ColumnDefinition Width="50"/>
+              </Grid.ColumnDefinitions>
+              <TextBlock Text="VOL" FontSize="11" FontWeight="Bold" VerticalAlignment="Center"
+                         Foreground="{DynamicResource MutedBrush}" Margin="0,0,10,0"/>
+              <Slider Grid.Column="1" Minimum="0" Maximum="100" TickFrequency="5"
+                      IsMoveToPointEnabled="True" VerticalAlignment="Center"
+                      Value="{Binding Volume, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+              <TextBlock Grid.Column="2" Text="{Binding VolumeText}" HorizontalAlignment="Right"
+                         VerticalAlignment="Center" FontSize="12" FontWeight="Bold"
+                         Foreground="{DynamicResource Accent2Brush}"/>
+            </Grid>
+
+            <StackPanel Grid.Row="4" Margin="0,12,0,0">
+              <Grid>
+                <Grid.ColumnDefinitions>
+                  <ColumnDefinition Width="*"/>
+                  <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Button Content="Appliquer" Style="{StaticResource CompactButtonStyle}"
+                        Margin="0,0,4,0" Height="32" Command="{Binding ApplyCommand}"/>
+                <Button Grid.Column="1" Content="↺ Réinitialiser"
+                        Style="{StaticResource CompactButtonStyle}" Margin="4,0,0,0" Height="32"
+                        Command="{Binding RestoreCommand}"/>
+              </Grid>
+              <Button Content="▶  Tester ce son" Style="{StaticResource PrimaryButtonStyle}"
+                      Margin="0,8,0,0" Height="40" FontSize="13" Command="{Binding TestCommand}"/>
+              <TextBlock Text="{Binding StateText}" Foreground="{DynamicResource Accent2Brush}"
+                         FontSize="11" TextWrapping="Wrap" Margin="0,8,0,0"/>
+            </StackPanel>
+
+            <StackPanel Grid.Row="5" Margin="0,14,0,0">
+              <Border Height="1" Background="{DynamicResource LineBrush}" Margin="0,0,0,12"/>
+              <TextBlock Text="RACCOURCIS" Foreground="{DynamicResource MutedBrush}" FontSize="11"
+                         FontWeight="ExtraBold"/>
+              <WrapPanel Margin="0,8,0,0">
+                <Button Content="+ Ajouter un son" Style="{StaticResource CompactButtonStyle}"
+                        Margin="0,0,6,6" Height="30"
+                        Command="{Binding DataContext.AddSoundCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
+              </WrapPanel>
+              <TextBlock Text="{Binding DataContext.LibraryInfo, RelativeSource={RelativeSource AncestorType=Window}}"
+                         Foreground="{DynamicResource MutedBrush}" FontSize="11"
+                         TextWrapping="Wrap" Margin="0,4,0,0"/>
+            </StackPanel>
+
+            <TextBlock Grid.Row="6" Text="VERIS MOD 1.5 · C# / .NET 8 · Overlay Bridge"
+                       Foreground="{DynamicResource MutedBrush}" FontSize="10" Opacity="0.7"
+                       HorizontalAlignment="Center" Margin="0,12,0,0"/>
+          </Grid>
+        </Border>
+      </Grid>
+
+      <!-- ===================== Pied de page ===================== -->
+      <Border x:Name="FooterBar" Grid.Row="2" Panel.ZIndex="10" Background="{DynamicResource PanelBrush}"
+              BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,1,0,0" Padding="18,0"
+              CornerRadius="0,0,17,17">
+        <Grid>
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="18"/>
+            <ColumnDefinition Width="Auto"/>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="Auto"/>
+          </Grid.ColumnDefinitions>
+
+          <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+            <Ellipse Width="7" Height="7" Fill="{Binding FooterDiscordDot}" Margin="0,0,7,0"/>
+            <TextBlock Text="Discord" Foreground="{DynamicResource MutedBrush}" FontSize="11"
+                       VerticalAlignment="Center"/>
+            <TextBlock Text="{Binding FooterDiscordText}" FontSize="11" FontWeight="Bold"
+                       Margin="7,0,0,0" VerticalAlignment="Center"/>
+          </StackPanel>
+
+          <Border Grid.Column="1" Width="1" Height="14" Background="{DynamicResource LineBrush}"
+                  HorizontalAlignment="Center" VerticalAlignment="Center"/>
+
+          <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
+            <Ellipse Width="7" Height="7" Fill="{Binding FooterHookDot}" Margin="0,0,7,0"/>
+            <TextBlock Text="Hook" Foreground="{DynamicResource MutedBrush}" FontSize="11"
+                       VerticalAlignment="Center"/>
+            <TextBlock Text="{Binding FooterHookText}" FontSize="11" FontWeight="Bold"
+                       Margin="7,0,0,0" VerticalAlignment="Center"/>
+          </StackPanel>
+
+          <StackPanel Grid.Column="4" Orientation="Horizontal" VerticalAlignment="Center">
+            <!-- Choix de l'ambiance -->
+            <TextBlock Text="Ambiance" Foreground="{DynamicResource MutedBrush}" FontSize="11"
+                       VerticalAlignment="Center" Margin="0,0,6,0"/>
+            <ItemsControl ItemsSource="{Binding Themes}" VerticalAlignment="Center">
+              <ItemsControl.ItemsPanel>
+                <ItemsPanelTemplate>
+                  <StackPanel Orientation="Horizontal"/>
+                </ItemsPanelTemplate>
+              </ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Button Style="{StaticResource SwatchButtonStyle}"
+                          Command="{Binding DataContext.ChooseThemeCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                          CommandParameter="{Binding Key}"
+                          ToolTip="{Binding Name}"/>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+
+            <Border Width="1" Height="14" Background="{DynamicResource LineBrush}" Margin="14,0"/>
+            <TextBlock Text="{Binding VersionText}" Foreground="{DynamicResource MutedBrush}"
+                       FontSize="11" Margin="0,0,12,0" VerticalAlignment="Center"/>
+            <Button Content="Diagnostic" Style="{StaticResource CompactButtonStyle}"
+                    Margin="0,0,6,0" Padding="10,3" Command="{Binding OpenDiagnosticCommand}"/>
+            <Button Content="À propos" Style="{StaticResource CompactButtonStyle}"
+                    Padding="10,3" ToolTip="Informations sur l’application"
+                    Command="{Binding OpenAboutCommand}"/>
+          </StackPanel>
+        </Grid>
+      </Border>
+    </Grid>
+  </Border>
+</Window>

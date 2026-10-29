@@ -1,0 +1,76 @@
+name: Release
+
+# Publier une version : créer un tag identique à AppInfo.Version (ex. v1.5.2) et le pousser.
+# GitHub compile VERIS MOD, fabrique le setup, calcule son SHA-256 et crée la Release.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Vérifier la version
+        id: ver
+        shell: pwsh
+        run: |
+          $v = '${{ github.ref_name }}'.TrimStart('v')
+          $core = Get-Content src/Services/Core.cs -Raw
+          if ($core -notmatch ('Version = "' + [regex]::Escape($v) + '"')) {
+            throw "Le tag v$v ne correspond pas à AppInfo.Version dans src/Services/Core.cs"
+          }
+          "version=$v" >> $env:GITHUB_OUTPUT
+
+      - name: Compiler
+        run: >
+          dotnet publish src/Audely.csproj -c Release -r win-x64 --self-contained true
+          -p:PublishSingleFile=true -p:PublishReadyToRun=true
+          -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true
+          -o publish
+
+      - name: Installer NSIS
+        run: choco install nsis -y --no-progress
+
+      - name: Fabriquer le setup
+        shell: pwsh
+        run: |
+          $v = '${{ steps.ver.outputs.version }}'
+          $publish = (Resolve-Path publish).Path
+          Set-Location installer
+          & "${env:ProgramFiles(x86)}\NSIS\makensis.exe" /V2 "/DAPP_VERSION=$v" "/DAPP_VERSION4=$v.0" "/DPUBLISH_DIR=$publish" setup.nsi
+          if ($LASTEXITCODE -ne 0) { throw 'makensis a échoué' }
+
+      - name: Fichiers de version
+        shell: pwsh
+        run: |
+          $v = '${{ steps.ver.outputs.version }}'
+          $setup = Get-ChildItem installer -Filter 'VERIS_MOD_Setup_*.exe' | Select-Object -First 1
+          if (-not $setup) { throw 'Setup introuvable' }
+          $sha = (Get-FileHash $setup.FullName -Algorithm SHA256).Hash.ToLower()
+          $notes = (Get-Content RELEASE_NOTES.txt -Raw -Encoding utf8).Trim()
+          $json = [ordered]@{
+            version = $v
+            url     = "https://github.com/${{ github.repository }}/releases/download/v$v/$($setup.Name)"
+            sha256  = $sha
+            notes   = $notes
+          } | ConvertTo-Json
+          [System.IO.File]::WriteAllText("$PWD\latest.json", $json, (New-Object System.Text.UTF8Encoding($false)))
+          Get-Content latest.json
+
+      - name: Publier la Release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $v = '${{ steps.ver.outputs.version }}'
+          $setup = (Get-ChildItem installer -Filter 'VERIS_MOD_Setup_*.exe' | Select-Object -First 1).FullName
+          gh release create "v$v" $setup latest.json --title "VERIS MOD $v" --notes-file RELEASE_NOTES.txt

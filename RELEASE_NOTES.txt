@@ -1,0 +1,1 @@
+Mises à jour depuis l'application (bandeau « Nouvelle version »), fenêtre aux coins arrondis, listes déroulantes cliquables sur toute la barre.
