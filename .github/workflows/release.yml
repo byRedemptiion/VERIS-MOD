@@ -1,10 +1,13 @@
 name: Release
 
-# Publier une version : créer un tag identique à AppInfo.Version (ex. v1.5.2) et le pousser.
-# GitHub compile VERIS MOD, fabrique le setup, calcule son SHA-256 et crée la Release.
+# Publier une version : changer AppInfo.Version (src/Services/Core.cs) et pousser sur main.
+# Si la Release vX.Y.Z n'existe pas encore, GitHub compile VERIS MOD, fabrique le setup,
+# calcule son SHA-256 et crée la Release (avec latest.json lu par l'application).
 on:
   push:
-    tags: ['v*']
+    branches: [main]
+    paths: ['src/**', 'installer/**', 'RELEASE_NOTES.txt']
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -19,18 +22,26 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
-      - name: Vérifier la version
+      - name: Lire la version
         id: ver
         shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          $v = '${{ github.ref_name }}'.TrimStart('v')
           $core = Get-Content src/Services/Core.cs -Raw
-          if ($core -notmatch ('Version = "' + [regex]::Escape($v) + '"')) {
-            throw "Le tag v$v ne correspond pas à AppInfo.Version dans src/Services/Core.cs"
-          }
+          if ($core -notmatch 'Version = "(\d+\.\d+\.\d+)"') { throw 'AppInfo.Version introuvable dans Core.cs' }
+          $v = $Matches[1]
           "version=$v" >> $env:GITHUB_OUTPUT
+          gh release view "v$v" --repo '${{ github.repository }}' *> $null
+          if ($LASTEXITCODE -eq 0) {
+            "skip=true" >> $env:GITHUB_OUTPUT
+            Write-Host "La Release v$v existe déjà : rien à publier."
+          } else {
+            "skip=false" >> $env:GITHUB_OUTPUT
+          }
 
       - name: Compiler
+        if: steps.ver.outputs.skip != 'true'
         run: >
           dotnet publish src/Audely.csproj -c Release -r win-x64 --self-contained true
           -p:PublishSingleFile=true -p:PublishReadyToRun=true
@@ -38,9 +49,11 @@ jobs:
           -o publish
 
       - name: Installer NSIS
+        if: steps.ver.outputs.skip != 'true'
         run: choco install nsis -y --no-progress
 
       - name: Fabriquer le setup
+        if: steps.ver.outputs.skip != 'true'
         shell: pwsh
         run: |
           $v = '${{ steps.ver.outputs.version }}'
@@ -50,6 +63,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'makensis a échoué' }
 
       - name: Fichiers de version
+        if: steps.ver.outputs.skip != 'true'
         shell: pwsh
         run: |
           $v = '${{ steps.ver.outputs.version }}'
@@ -67,10 +81,11 @@ jobs:
           Get-Content latest.json
 
       - name: Publier la Release
+        if: steps.ver.outputs.skip != 'true'
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           $v = '${{ steps.ver.outputs.version }}'
           $setup = (Get-ChildItem installer -Filter 'VERIS_MOD_Setup_*.exe' | Select-Object -First 1).FullName
-          gh release create "v$v" $setup latest.json --title "VERIS MOD $v" --notes-file RELEASE_NOTES.txt
+          gh release create "v$v" $setup latest.json --title "VERIS MOD $v" --notes-file RELEASE_NOTES.txt --target '${{ github.sha }}'
