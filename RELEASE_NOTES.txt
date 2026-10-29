@@ -1,1 +1,1 @@
-Voix V.E.R.I.S (petit robot enfant) en un clic, nouvelles icônes et polices, animations (cartes, mascotte, onde), notifications discrètes, glisser-déposer d'un son sur une carte, couleur perso et écran de bienvenue.
+Voix V.E.R.I.S : suppression du bip avant chaque phrase, la voix parle directement.
