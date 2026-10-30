@@ -8,7 +8,7 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace Audely.Services;
+namespace ViiCord.Services;
 
 /// <summary>Une version plus récente disponible sur GitHub.</summary>
 public sealed record UpdateInfo(string Version, string Url, string Sha256, string Notes);
@@ -27,7 +27,7 @@ public static class UpdateService
     private static HttpClient CreateClient()
     {
         var client = new HttpClient { Timeout = TimeSpan.FromMinutes(5) };
-        client.DefaultRequestHeaders.UserAgent.ParseAdd("VERIS-MOD/" + AppInfo.Version);
+        client.DefaultRequestHeaders.UserAgent.ParseAdd("ViiCord/" + AppInfo.Version);
         return client;
     }
 
@@ -36,7 +36,7 @@ public static class UpdateService
     {
         try
         {
-            string installDir = Path.Combine(AppPaths.LocalAppData, "Programs", "VERIS MOD");
+            string installDir = Path.Combine(AppPaths.LocalAppData, "Programs", "ViiCord");
             string current = Path.GetFullPath(AppPaths.AppDir).TrimEnd('\\', '/');
             return string.Equals(current, Path.GetFullPath(installDir).TrimEnd('\\', '/'),
                 StringComparison.OrdinalIgnoreCase);
@@ -71,9 +71,9 @@ public static class UpdateService
     /// <summary>Télécharge le setup et vérifie son SHA-256. Retourne le chemin du fichier vérifié.</summary>
     public static async Task<string> DownloadAsync(UpdateInfo info, IProgress<int>? progress, CancellationToken token = default)
     {
-        string dir = Path.Combine(Path.GetTempPath(), "VERIS_MOD_Update");
+        string dir = Path.Combine(Path.GetTempPath(), "ViiCord_Update");
         Directory.CreateDirectory(dir);
-        string target = Path.Combine(dir, "VERIS_MOD_Setup_" + SafeName(info.Version) + ".exe");
+        string target = Path.Combine(dir, "ViiCord_Setup_" + SafeName(info.Version) + ".exe");
         string partial = target + ".part";
 
         try

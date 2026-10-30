@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Génère la voix V.E.R.I.S de VERIS MOD (« petit robot enfant »).
+"""Génère la voix VIIRUS de ViiCord (« petit robot enfant »).
 Outils requis : kokoro-onnx, soundfile, sox, ffmpeg.
 Modèle (licence Apache-2.0) : kokoro-v1.0.onnx + voices-v1.0.bin
 https://github.com/thewh1teagle/kokoro-onnx/releases/tag/model-files-v1.0
@@ -10,17 +10,17 @@ import soundfile as sf
 from kokoro_onnx import Kokoro
 
 LINES = {
-    "Veris_Message": "Nouveau message.",
-    "Veris_Rejoint": "Un utilisateur a rejoint.",
-    "Veris_Parti": "Un utilisateur est parti.",
-    "Veris_Appel_Sortant": "Appel en cours.",
-    "Veris_Connexion": "Connexion en cours.",
-    "Veris_Deconnexion": "Déconnexion.",
-    "Veris_Micro_Coupe": "Micro coupé.",
-    "Veris_Micro_Active": "Micro démuté.",
-    "Veris_Casque_Coupe": "Casque coupé.",
-    "Veris_Casque_Active": "Son rétabli.",
-    "Veris_Appel_Entrant": "Appel entrant.",
+    "Viirus_Message": "Nouveau message.",
+    "Viirus_Rejoint": "Un utilisateur a rejoint.",
+    "Viirus_Parti": "Un utilisateur est parti.",
+    "Viirus_Appel_Sortant": "Appel en cours.",
+    "Viirus_Connexion": "Connexion en cours.",
+    "Viirus_Deconnexion": "Déconnexion.",
+    "Viirus_Micro_Coupe": "Micro coupé.",
+    "Viirus_Micro_Active": "Micro démuté.",
+    "Viirus_Casque_Coupe": "Casque coupé.",
+    "Viirus_Casque_Active": "Son rétabli.",
+    "Viirus_Appel_Entrant": "Appel entrant.",
 }
 out = sys.argv[1] if len(sys.argv) > 1 else "out"
 os.makedirs(out, exist_ok=True)

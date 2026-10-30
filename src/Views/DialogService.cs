@@ -6,9 +6,9 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using Microsoft.Win32;
-using Audely.ViewModels;
+using ViiCord.ViewModels;
 
-namespace Audely.Views;
+namespace ViiCord.Views;
 
 public sealed class DialogService : IDialogService
 {
@@ -24,10 +24,10 @@ public sealed class DialogService : IDialogService
 
     public void Attach(MainViewModel vm) => _vm = vm;
 
-    public void Info(string message, string title = "VERIS MOD") =>
+    public void Info(string message, string title = "ViiCord") =>
         MessageBox.Show(_owner, message, title, MessageBoxButton.OK, MessageBoxImage.Information);
 
-    public void Error(string message, string title = "VERIS MOD") =>
+    public void Error(string message, string title = "ViiCord") =>
         MessageBox.Show(_owner, message, title, MessageBoxButton.OK, MessageBoxImage.Warning);
 
     public bool Confirm(string message, string title) =>
@@ -68,8 +68,8 @@ public sealed class DialogService : IDialogService
         {
             Title = "Exporter le profil",
             FileName = suggestedName,
-            Filter = "Profil VERIS MOD (*.veris)|*.veris",
-            DefaultExt = ".veris",
+            Filter = "Profil ViiCord (*.viicord)|*.viicord",
+            DefaultExt = ".viicord",
             AddExtension = true,
             OverwritePrompt = true,
         };
@@ -81,7 +81,7 @@ public sealed class DialogService : IDialogService
         var dlg = new OpenFileDialog
         {
             Title = "Importer un profil",
-            Filter = "Profil VERIS MOD (*.veris)|*.veris|Tous les fichiers|*.*",
+            Filter = "Profil ViiCord (*.viicord;*.veris)|*.viicord;*.veris|Tous les fichiers|*.*",
             CheckFileExists = true,
         };
         return dlg.ShowDialog(_owner) == true ? dlg.FileName : null;
@@ -93,7 +93,7 @@ public sealed class DialogService : IDialogService
         new DiagnosticWindow(_vm, this) { Owner = _owner }.ShowDialog();
     }
 
-    public void ShowAbout() => new AboutWindow(_mascot) { Owner = _owner }.ShowDialog();
+    public void ShowAbout() => new AboutWindow(_mascot, _vm?.CheckUpdateCommand) { Owner = _owner }.ShowDialog();
 
     public void ShowLibrary()
     {

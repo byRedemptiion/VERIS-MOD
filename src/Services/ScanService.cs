@@ -4,11 +4,11 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Audely.Models;
+using ViiCord.Models;
 
-namespace Audely.Services;
+namespace ViiCord.Services;
 
-/// <summary>Photo de l'état de Discord / VERIS MOD à un instant donné (lecture seule).</summary>
+/// <summary>Photo de l'état de Discord / ViiCord à un instant donné (lecture seule).</summary>
 public sealed class ScanSnapshot
 {
     public DiscordCoreInfo? Core { get; set; }
@@ -128,11 +128,11 @@ public static class ScanService
             if (s.Overlay != null)
             {
                 lines.Add("OVERLAY_HOST_PATH=" + s.Overlay.HostPath);
-                lines.Add("OVERLAY_PRELOAD_PATH=" + s.Overlay.AudelyPreloadPath);
+                lines.Add("OVERLAY_PRELOAD_PATH=" + s.Overlay.BridgePreloadPath);
                 try { lines.Add("OVERLAY_HOST_SHA256=" + Hashing.Sha256File(s.Overlay.HostPath)); } catch { }
-                if (File.Exists(s.Overlay.AudelyPreloadPath))
+                if (File.Exists(s.Overlay.BridgePreloadPath))
                 {
-                    try { lines.Add("OVERLAY_AUDELY_PRELOAD_SHA256=" + Hashing.Sha256File(s.Overlay.AudelyPreloadPath)); } catch { }
+                    try { lines.Add("OVERLAY_BRIDGE_PRELOAD_SHA256=" + Hashing.Sha256File(s.Overlay.BridgePreloadPath)); } catch { }
                 }
             }
 

@@ -8,10 +8,10 @@ using System.Text;
 using System.Threading;
 using System.Windows;
 using System.Windows.Threading;
-using Audely.Models;
-using Audely.Services;
+using ViiCord.Models;
+using ViiCord.Services;
 
-namespace Audely;
+namespace ViiCord;
 
 public partial class App : Application
 {
@@ -19,11 +19,11 @@ public partial class App : Application
 
     protected override void OnStartup(StartupEventArgs e)
     {
-        // Une seule instance : deux fenêtres VERIS MOD pourraient s'écraser mutuellement la configuration.
-        _singleInstance = new Mutex(true, "Audely.SingleInstance.byRedemptiion", out bool createdNew);
+        // Une seule instance : deux fenêtres ViiCord pourraient s'écraser mutuellement la configuration.
+        _singleInstance = new Mutex(true, "ViiCord.SingleInstance.byRedemptiion", out bool createdNew);
         if (!createdNew)
         {
-            MessageBox.Show("VERIS MOD est déjà ouvert.", "VERIS MOD", MessageBoxButton.OK, MessageBoxImage.Information);
+            MessageBox.Show("ViiCord est déjà ouvert.", "ViiCord", MessageBoxButton.OK, MessageBoxImage.Information);
             Shutdown();
             return;
         }
@@ -67,8 +67,8 @@ public partial class App : Application
         LogCrash(e.Exception);
         MessageBox.Show(
             "Une erreur inattendue est survenue :\n\n" + e.Exception.Message +
-            "\n\nDétails enregistrés dans app-crash.log (dossier %APPDATA%\\Audely).",
-            "VERIS MOD", MessageBoxButton.OK, MessageBoxImage.Warning);
+            "\n\nDétails enregistrés dans app-crash.log (dossier %APPDATA%\\ViiCord).",
+            "ViiCord", MessageBoxButton.OK, MessageBoxImage.Warning);
         e.Handled = true;
     }
 

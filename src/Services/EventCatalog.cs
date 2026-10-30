@@ -4,7 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-namespace Audely.Services;
+namespace ViiCord.Services;
 
 /// <summary>Définition d'un événement sonore Discord (identique aux cibles V1.3.7).</summary>
 public sealed record EventDef(

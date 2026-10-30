@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Windows.Media;
 
-namespace Audely.Services;
+namespace ViiCord.Services;
 
 /// <summary>
 /// Icônes vectorielles des événements (grille 24 × 24, style Material Design, licence Apache-2.0).

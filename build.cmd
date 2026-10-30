@@ -5,9 +5,9 @@ set "DOTNET_CLI_TELEMETRY_OPTOUT=1"
 set "DOTNET_NOLOGO=1"
 set "ROOT=%~dp0"
 
-if not exist "%ROOT%src\Audely.csproj" (
+if not exist "%ROOT%src\ViiCord.csproj" (
   echo.
-  echo  Ce fichier doit etre dans le dossier AudelyCS, a cote du dossier "src".
+  echo  Ce fichier doit etre dans le dossier ViiCord, a cote du dossier "src".
   echo  Dossier actuel : %ROOT%
   echo.
   pause
@@ -19,7 +19,7 @@ set "LOG=%ROOT%build-log.txt"
 set "DOTNET=dotnet"
 
 rem --- SDK .NET 8 : utilise celui du PC, sinon un SDK local (sans droits admin)
-set "SDKDIR=%LOCALAPPDATA%\AudelyBuild\dotnet"
+set "SDKDIR=%LOCALAPPDATA%\ViiCordBuild\dotnet"
 if exist "%ROOT%.dotnet\dotnet.exe" set "SDKDIR=%ROOT%.dotnet"
 
 dotnet --list-sdks 2>nul | findstr /b /c:"8." >nul
@@ -41,20 +41,20 @@ cd /d "%ROOT%src"
 if exist "%OUT%" rmdir /s /q "%OUT%"
 
 echo.
-echo  === Compilation de VERIS MOD 1.5 ===
+echo  === Compilation de ViiCord 1.5 ===
 echo  SDK .NET :
 "%DOTNET%" --version
 echo  Compilation en cours ^(1 a 3 minutes, ne ferme pas la fenetre^)...
 echo.
 
-"%DOTNET%" publish Audely.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:PublishReadyToRun=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -o "%OUT%" > "%LOG%" 2>&1
+"%DOTNET%" publish ViiCord.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:PublishReadyToRun=true -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true -o "%OUT%" > "%LOG%" 2>&1
 set "RC=%errorlevel%"
 
 if not "%RC%"=="0" goto fail
-if not exist "%OUT%\VerisMod.exe" goto fail
+if not exist "%OUT%\ViiCord.exe" goto fail
 
 echo  OK. Application prete :
-echo    %OUT%\VerisMod.exe
+echo    %OUT%\ViiCord.exe
 echo.
 if /i "%~1"=="/silent" exit /b 0
 explorer "%OUT%"

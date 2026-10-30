@@ -1,9 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using Audely.Models;
+using ViiCord.Models;
 
-namespace Audely.Services;
+namespace ViiCord.Services;
 
 /// <summary>Sons favoris (★) de chaque catégorie, enregistrés dans settings.json.</summary>
 public static class FavoritesService

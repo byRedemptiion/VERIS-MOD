@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Input;
 
-namespace Audely.Views;
+namespace ViiCord.Views;
 
 public partial class InputDialog : Window
 {

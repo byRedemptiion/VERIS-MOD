@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace Audely.Models;
+namespace ViiCord.Models;
 
 // Les noms JSON restent identiques à ceux de la version PowerShell
 // (camelCase) : runtime-config.json est aussi lu par le JS dans Discord.
@@ -111,7 +111,7 @@ public sealed class Profile
     public string UpdatedAt { get; set; } = "";
     public List<ProfileTarget> Targets { get; set; } = new();
 
-    /// <summary>Profil intégré à VERIS MOD (non enregistré sur le disque, non supprimable).</summary>
+    /// <summary>Profil intégré à ViiCord (non enregistré sur le disque, non supprimable).</summary>
     [JsonIgnore] public bool IsBuiltin { get; set; }
 
     [JsonExtensionData] public Dictionary<string, JsonElement>? Extra { get; set; }
@@ -182,7 +182,7 @@ public sealed record OverlayInfo(
     string ModuleDir,
     string HostPath,
     string OriginalPreloadPath,
-    string AudelyPreloadPath);
+    string BridgePreloadPath);
 
 public sealed record BackupCheck(bool Valid, string Reason);
 
@@ -194,7 +194,7 @@ public sealed record SoundItem(string Id, string Name, string Path, SoundKind Ki
 
     /// <summary>Libellé de la catégorie (pour la bibliothèque).</summary>
     public string CategoryTitle =>
-        string.IsNullOrEmpty(Category) ? "toutes catégories" : (Audely.Services.EventCatalog.Find(Category)?.Title ?? Category);
+        string.IsNullOrEmpty(Category) ? "toutes catégories" : (ViiCord.Services.EventCatalog.Find(Category)?.Title ?? Category);
 
     public string LibraryName => DisplayName + "  —  " + CategoryTitle;
 }

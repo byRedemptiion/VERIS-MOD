@@ -1,11 +1,11 @@
 "use strict";
 
-// Keep Discord's original preload first. If Audely fails afterwards, the
+// Keep Discord's original preload first. If ViiCord fails afterwards, the
 // overlay still has DiscordNative / IPC exactly as Discord expects.
 try {
   require("./overlayPreload");
 } catch (error) {
-  try { console.error("[AudelyOverlay] original preload failed", error); } catch {}
+  try { console.error("[ViiCordOverlay] original preload failed", error); } catch {}
   throw error;
 }
 
@@ -15,7 +15,11 @@ try {
   const path = require("path");
 
   const VERSION = "1.3.7";
-  const ROOT = path.join(process.env.APPDATA || "", "Audely");
+  // Legacy Audely compatibility : les installations d'avant ViiCord utilisent encore le dossier « Audely »
+  // (devenu un lien vers « ViiCord » après la migration). On préfère « ViiCord » s'il contient la configuration.
+  const APPDATA_DIR = process.env.APPDATA || "";
+  const ROOT_CANDIDATES = [path.join(APPDATA_DIR, "ViiCord"), path.join(APPDATA_DIR, "Audely")];
+  const ROOT = ROOT_CANDIDATES.find(dir => fs.existsSync(path.join(dir, "runtime-config.json"))) || ROOT_CANDIDATES[0];
   const CONFIG = path.join(ROOT, "runtime-config.json");
   const LOG = path.join(ROOT, "overlay-runtime.log");
   const MAX_BYTES = 5 * 1024 * 1024;
@@ -323,7 +327,7 @@ try {
   try {
     const fs = require("fs");
     const path = require("path");
-    const log = path.join(process.env.APPDATA || "", "Audely", "overlay-runtime.log");
+    const log = path.join(process.env.APPDATA || "", "ViiCord", "overlay-runtime.log");
     fs.appendFileSync(log, `${new Date().toISOString()} PRELOAD_FATAL ${error && error.stack || error}\n`, "utf8");
   } catch {}
 }

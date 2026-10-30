@@ -6,12 +6,12 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Text;
 using System.Text.RegularExpressions;
-using Audely.Models;
+using ViiCord.Models;
 
-namespace Audely.Services;
+namespace ViiCord.Services;
 
 /// <summary>
-/// Découverte ciblée des hashes de sons dans le cache Discord (Find-AudelyCurrentAliases).
+/// Découverte ciblée des hashes de sons dans le cache Discord (ancien script PowerShell).
 /// Règles conservées : jamais récursif, uniquement les 10 plus récents f_* de 4 à 30 Mo,
 /// lecture seule. Les fichiers sont analysés en parallèle.
 /// </summary>

@@ -6,16 +6,15 @@
 $ErrorActionPreference = 'Stop'
 
 try {
-  $dest = Join-Path $env:LOCALAPPDATA 'Programs\VERIS MOD'
-  $exe  = Join-Path $dest 'VerisMod.exe'
-  $data = Join-Path $env:APPDATA 'Audely'
+  $dest = Join-Path $env:LOCALAPPDATA 'Programs\ViiCord'
+  $exe  = Join-Path $dest 'ViiCord.exe'
 
-  if (-not (Test-Path (Join-Path $Source 'VerisMod.exe'))) {
-    throw "VerisMod.exe introuvable dans $Source (la compilation a-t-elle reussi ?)"
+  if (-not (Test-Path (Join-Path $Source 'ViiCord.exe'))) {
+    throw "ViiCord.exe introuvable dans $Source (la compilation a-t-elle reussi ?)"
   }
 
-  # 1. Ferme VERIS MOD s'il tourne (mise a jour d'une version deja installee)
-  Get-Process -Name 'VerisMod' -ErrorAction SilentlyContinue | ForEach-Object {
+  # 1. Ferme ViiCord s'il tourne (mise a jour d'une version deja installee)
+  Get-Process -Name 'ViiCord' -ErrorAction SilentlyContinue | ForEach-Object {
     try {
       [void]$_.CloseMainWindow()
       if (-not $_.WaitForExit(4000)) { $_.Kill() }
@@ -24,9 +23,7 @@ try {
 
   # 2. Dossiers : programme + donnees (les reglages existants sont conserves)
   New-Item -ItemType Directory -Force -Path $dest | Out-Null
-  foreach ($sub in @('', 'library', 'sounds', 'backups')) {
-    New-Item -ItemType Directory -Force -Path (Join-Path $data $sub) | Out-Null
-  }
+  # (les reglages dans %APPDATA%\ViiCord sont crees par l'application, qui migre aussi l'ancien dossier Audely)
 
   # 3. Copie de l'application (exe + sons + mascotte)
   Get-ChildItem -LiteralPath $dest -Force -ErrorAction SilentlyContinue |
@@ -42,19 +39,19 @@ try {
     $s.TargetPath = $exe
     $s.WorkingDirectory = $dest
     $s.IconLocation = "$exe,0"
-    $s.Description = 'VERIS MOD - personnalisation des sons Discord'
+    $s.Description = 'ViiCord - personnalisation des sons Discord'
     $s.Save()
   }
-  $desktopLnk = Join-Path ([Environment]::GetFolderPath('Desktop')) 'VERIS MOD.lnk'
-  $startLnk   = Join-Path ([Environment]::GetFolderPath('Programs')) 'VERIS MOD.lnk'
+  $desktopLnk = Join-Path ([Environment]::GetFolderPath('Desktop')) 'ViiCord.lnk'
+  $startLnk   = Join-Path ([Environment]::GetFolderPath('Programs')) 'ViiCord.lnk'
   New-AppShortcut $desktopLnk
   New-AppShortcut $startLnk
 
   # 5. Entree "Applications installees" de Windows (desinstallation depuis les Parametres)
-  $key = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\VERIS MOD'
+  $key = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\ViiCord'
   New-Item -Path $key -Force | Out-Null
   $unCmd = '"' + (Join-Path $dest 'Desinstaller.cmd') + '"'
-  New-ItemProperty -Path $key -Name 'DisplayName'     -Value 'VERIS MOD' -PropertyType String -Force | Out-Null
+  New-ItemProperty -Path $key -Name 'DisplayName'     -Value 'ViiCord' -PropertyType String -Force | Out-Null
   New-ItemProperty -Path $key -Name 'DisplayVersion'  -Value '1.5.0' -PropertyType String -Force | Out-Null
   New-ItemProperty -Path $key -Name 'Publisher'       -Value 'byRedemptiion' -PropertyType String -Force | Out-Null
   New-ItemProperty -Path $key -Name 'InstallLocation' -Value $dest -PropertyType String -Force | Out-Null
@@ -65,14 +62,14 @@ try {
 
   Write-Host ''
   Write-Host '  ==========================================' -ForegroundColor Green
-  Write-Host '    VERIS MOD est installe !' -ForegroundColor Green
+  Write-Host '    ViiCord est installe !' -ForegroundColor Green
   Write-Host '  ==========================================' -ForegroundColor Green
   Write-Host ''
   Write-Host "  Programme   : $dest"
   Write-Host "  Reglages    : $data"
-  Write-Host '  Raccourcis  : Bureau + menu Demarrer ("VERIS MOD")'
+  Write-Host '  Raccourcis  : Bureau + menu Demarrer ("ViiCord")'
   Write-Host ''
-  Write-Host '  Lancement de VERIS MOD...'
+  Write-Host '  Lancement de ViiCord...'
   Start-Process -FilePath $exe -WorkingDirectory $dest
   Start-Sleep -Seconds 3
   exit 0

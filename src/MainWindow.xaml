@@ -1,10 +1,10 @@
-<Window x:Class="Audely.MainWindow"
+<Window x:Class="ViiCord.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:shell="clr-namespace:System.Windows.Shell;assembly=PresentationFramework"
-        xmlns:vm="clr-namespace:Audely.ViewModels"
-        Title="VERIS MOD — byRedemptiion"
-        Icon="pack://application:,,,/Assets/Audely.ico"
+        xmlns:vm="clr-namespace:ViiCord.ViewModels"
+        Title="ViiCord — byRedemptiion"
+        Icon="pack://application:,,,/Assets/ViiCord.ico"
         Height="920" Width="1520" MinHeight="790" MinWidth="1180"
         WindowStartupLocation="CenterScreen"
         WindowStyle="None" ResizeMode="CanResize"
@@ -139,22 +139,12 @@
         <Border Grid.ColumnSpan="3" Background="{DynamicResource PanelBrush}" CornerRadius="17,17,0,0"/>
 
         <StackPanel Orientation="Horizontal" Margin="16,0,0,0" VerticalAlignment="Center">
-          <!-- Mascotte V.E.R.I.S -->
-          <Border Width="46" Height="46" CornerRadius="12" Background="{DynamicResource FieldBrush}"
-                  BorderBrush="{DynamicResource AccentBrush}" BorderThickness="1.2">
-            <Border.Effect>
-              <DropShadowEffect Color="{DynamicResource AccentColor}" BlurRadius="16"
-                                ShadowDepth="0" Opacity="0.4"/>
-            </Border.Effect>
-            <Image x:Name="MascotImage" Stretch="Uniform" Margin="4"/>
-          </Border>
-
-          <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
+          <StackPanel Margin="2,0,0,0" VerticalAlignment="Center">
             <StackPanel Orientation="Horizontal">
               <TextBlock FontFamily="{DynamicResource DisplayFont}"
                          FontSize="{DynamicResource WordSize}" FontWeight="ExtraBold"
                          VerticalAlignment="Center">
-                <Run Text="VERIS"/><Run Text=" MOD" Foreground="{DynamicResource Accent2Brush}"/>
+                <Run Text="Vii"/><Run Text="Cord" Foreground="{DynamicResource Accent2Brush}"/>
               </TextBlock>
               <TextBlock Text="{Binding VersionText}" FontSize="11"
                          Foreground="{DynamicResource MutedBrush}"
@@ -188,11 +178,11 @@
           <Button Content="Réparer" Command="{Binding RepairCommand}"
                   Style="{StaticResource PrimaryButtonStyle}" Margin="0,0,8,0" Height="34"
                   shell:WindowChrome.IsHitTestVisibleInChrome="True"
-                  ToolTip="Réinstalle VERIS MOD après une mise à jour de Discord."/>
+                  ToolTip="Réinstalle ViiCord après une mise à jour de Discord."/>
           <Button Content="{Binding PauseText}" Command="{Binding PauseCommand}"
                   Margin="0,0,10,0" Height="34" MinWidth="74"
                   shell:WindowChrome.IsHitTestVisibleInChrome="True"
-                  ToolTip="Retire temporairement VERIS MOD de Discord (ou le réactive)."/>
+                  ToolTip="Retire temporairement ViiCord de Discord (ou le réactive)."/>
           <Button x:Name="MinimizeButton" Style="{StaticResource WindowButtonStyle}"
                   Content="—" Width="38" Height="30" Padding="0" Margin="0,0,3,0"
                   shell:WindowChrome.IsHitTestVisibleInChrome="True" ToolTip="Réduire"/>
@@ -247,19 +237,19 @@
                       Command="{Binding RestoreAllCommand}"/>
               <Button Content="Activer" Style="{StaticResource NavButtonStyle}"
                       Command="{Binding ActivateCommand}"
-                      ToolTip="Installe VERIS MOD dans Discord (Discord est fermé puis relancé)."/>
+                      ToolTip="Installe ViiCord dans Discord (Discord est fermé puis relancé)."/>
               <Button Content="Désinstaller" Style="{StaticResource NavButtonStyle}"
                       Command="{Binding UninstallCommand}"
                       ToolTip="Restaure les fichiers originaux de Discord."/>
               <Button Content="Mises à jour" Style="{StaticResource NavButtonStyle}"
                       Command="{Binding CheckUpdateCommand}"
-                      ToolTip="Vérifie si une nouvelle version de VERIS MOD est disponible."/>
+                      ToolTip="Vérifie si une nouvelle version de ViiCord est disponible."/>
             </StackPanel>
 
             <Border Grid.Row="1" VerticalAlignment="Bottom" Margin="0,8,0,0"
                     Background="{DynamicResource FieldBrush}" BorderBrush="{DynamicResource LineBrush}"
                     BorderThickness="1" CornerRadius="14" Padding="11" Cursor="Hand"
-                    ToolTip="Ouvrir le diagnostic VERIS MOD">
+                    ToolTip="Ouvrir le diagnostic ViiCord">
               <Border.InputBindings>
                 <MouseBinding Gesture="LeftClick" Command="{Binding OpenDiagnosticCommand}"/>
               </Border.InputBindings>
@@ -319,10 +309,10 @@
                         Margin="8,0,0,0" Height="30" Command="{Binding LoadProfileCommand}"/>
                 <Button Content="Exporter" Style="{StaticResource CompactButtonStyle}"
                         Margin="8,0,0,0" Height="30" Command="{Binding ExportProfileCommand}"
-                        ToolTip="Enregistre le profil choisi dans un fichier .veris à partager."/>
+                        ToolTip="Enregistre le profil choisi dans un fichier .viicord à partager."/>
                 <Button Content="Importer" Style="{StaticResource CompactButtonStyle}"
                         Margin="8,0,0,0" Height="30" Command="{Binding ImportProfileCommand}"
-                        ToolTip="Ajoute un profil reçu (.veris). Tu peux aussi glisser le fichier sur la fenêtre."/>
+                        ToolTip="Ajoute un profil reçu (.viicord). Tu peux aussi glisser le fichier sur la fenêtre."/>
                 <Button Content="×" Style="{StaticResource IconButtonStyle}" Height="30"
                         Margin="8,0,0,0" Command="{Binding DeleteProfileCommand}"
                         ToolTip="Supprimer le profil"/>
@@ -427,7 +417,7 @@
                     <ColumnDefinition Width="*"/>
                   </Grid.ColumnDefinitions>
 
-                  <!-- Aperçu : mascotte V.E.R.I.S qui pulse pendant la lecture + onde animée -->
+                  <!-- Aperçu : mascotte VIIRUS qui pulse pendant la lecture + onde animée -->
                   <Border CornerRadius="20" ClipToBounds="True" MinHeight="300"
                           Background="{DynamicResource AccentSoftBrush}"
                           BorderBrush="{DynamicResource AccentLineBrush}" BorderThickness="1">
@@ -657,7 +647,7 @@
                         </Border>
                       </Grid>
 
-                      <TextBlock Text="Marque des sons ★ dans chaque catégorie (bouton Favori), puis laisse VERIS choisir pour toi."
+                      <TextBlock Text="Marque des sons ★ dans chaque catégorie (bouton Favori), puis laisse VIIRUS choisir pour toi."
                                  FontSize="14" TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}"
                                  Margin="0,16,0,0"/>
 
@@ -717,10 +707,10 @@
                                  Foreground="{DynamicResource Accent2Brush}" Margin="0,0,0,0"/>
 
                       <WrapPanel Margin="0,16,0,0">
-                        <Button Content="Voix V.E.R.I.S" Style="{StaticResource CompactButtonStyle}"
+                        <Button Content="Voix VIIRUS" Style="{StaticResource CompactButtonStyle}"
                                 Height="36" Margin="0,0,8,8" Padding="14,5" FontSize="13"
                                 ToolTip="Annonce chaque événement avec la voix du robot (réversible)."
-                                Command="{Binding ApplyVerisVoiceCommand}"/>
+                                Command="{Binding ApplyViirusVoiceCommand}"/>
                         <Button Content="↺ Tout restaurer" Style="{StaticResource CompactButtonStyle}"
                                 Height="36" Margin="0,0,8,8" Padding="14,5" FontSize="13"
                                 Command="{Binding RestoreAllCommand}"/>
@@ -761,7 +751,7 @@
                   </DataTemplate>
                 </ItemsControl.ItemTemplate>
               </ItemsControl>
-              <TextBlock Text="Astuce : glisse un fichier audio sur la carte pour l'ajouter à sa catégorie, ou un fichier .veris sur la fenêtre pour importer un profil."
+              <TextBlock Text="Astuce : glisse un fichier audio sur la carte pour l'ajouter à sa catégorie, ou un fichier .viicord sur la fenêtre pour importer un profil."
                          Foreground="{DynamicResource MutedBrush}" FontSize="11" TextAlignment="Center"
                          TextWrapping="Wrap" Margin="0,2,0,0"/>
             </StackPanel>
@@ -822,7 +812,7 @@
             </ItemsControl>
 
             <Border Width="1" Height="14" Background="{DynamicResource LineBrush}" Margin="14,0"/>
-            <TextBlock Text="{Binding VersionText}" Foreground="{DynamicResource MutedBrush}"
+            <TextBlock Text="{Binding FooterVersionText}" Foreground="{DynamicResource MutedBrush}"
                        FontSize="11" Margin="0,0,12,0" VerticalAlignment="Center"/>
             <Button Content="Diagnostic" Style="{StaticResource CompactButtonStyle}"
                     Margin="0,0,6,0" Padding="10,3" Command="{Binding OpenDiagnosticCommand}"/>
@@ -866,7 +856,7 @@
           </Border.Effect>
           <StackPanel>
             <Image x:Name="OnboardingMascot" Height="110" Stretch="Uniform" HorizontalAlignment="Center"/>
-            <TextBlock Text="Bienvenue dans VERIS MOD" FontFamily="{DynamicResource DisplayFont}"
+            <TextBlock Text="Bienvenue dans ViiCord" FontFamily="{DynamicResource DisplayFont}"
                        FontSize="{DynamicResource H1Size}" FontWeight="ExtraBold"
                        HorizontalAlignment="Center" Margin="0,14,0,4"/>
             <TextBlock Text="Personnalise les sons de Discord, sans rien casser." FontSize="13"
@@ -879,7 +869,7 @@
                          FontSize="13" Margin="0,0,0,8" TextWrapping="Wrap"/>
               <TextBlock Text="3 · Tout est réversible avec « Tout restaurer »."
                          FontSize="13" Margin="0,0,0,8" TextWrapping="Wrap"/>
-              <TextBlock Text="4 · Charge le profil « Voix VERIS » : le robot annonce tes événements."
+              <TextBlock Text="4 · Charge le profil « Voix VIIRUS » : le robot annonce tes événements."
                          FontSize="13" Margin="0,0,0,8" TextWrapping="Wrap"/>
               <TextBlock Text="5 · Ajoute tes sons avec + sur chaque carte, marque tes favoris ★, puis clique sur Aléatoire."
                          FontSize="13" TextWrapping="Wrap"/>

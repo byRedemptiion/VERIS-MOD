@@ -1,7 +1,7 @@
 name: Release
 
 # Publier une version : changer AppInfo.Version (src/Services/Core.cs) et pousser sur main.
-# Si la Release vX.Y.Z n'existe pas encore, GitHub compile VERIS MOD, fabrique le setup,
+# Si la Release vX.Y.Z n'existe pas encore, GitHub compile ViiCord, fabrique le setup,
 # calcule son SHA-256 et crée la Release (avec latest.json lu par l'application).
 # Branche « test » : même chaîne, mais en pré-version (vX.Y.Z-test.N), sans latest.json :
 # l'application installée ne la propose jamais comme mise à jour.
@@ -59,7 +59,7 @@ jobs:
         if: steps.ver.outputs.skip != 'true'
         shell: pwsh
         run: |
-          dotnet publish src/Audely.csproj -c Release -r win-x64 --self-contained true `
+          dotnet publish src/ViiCord.csproj -c Release -r win-x64 --self-contained true `
             -p:PublishSingleFile=true -p:PublishReadyToRun=true `
             -p:IncludeNativeLibrariesForSelfExtract=true -p:EnableCompressionInSingleFile=true `
             -o publish 2>&1 | Tee-Object -FilePath build.log
@@ -93,7 +93,7 @@ jobs:
         shell: pwsh
         run: |
           $v = '${{ steps.ver.outputs.version }}'
-          $setup = Get-ChildItem installer -Filter 'VERIS_MOD_Setup_*.exe' | Select-Object -First 1
+          $setup = Get-ChildItem installer -Filter 'ViiCord_Setup_*.exe' | Select-Object -First 1
           if (-not $setup) { throw 'Setup introuvable' }
           $sha = (Get-FileHash $setup.FullName -Algorithm SHA256).Hash.ToLower()
           $notes = (Get-Content RELEASE_NOTES.txt -Raw -Encoding utf8).Trim()
@@ -115,10 +115,10 @@ jobs:
         run: |
           $v = '${{ steps.ver.outputs.version }}'
           $tag = '${{ steps.ver.outputs.tag }}'
-          $setup = (Get-ChildItem installer -Filter 'VERIS_MOD_Setup_*.exe' | Select-Object -First 1).FullName
+          $setup = (Get-ChildItem installer -Filter 'ViiCord_Setup_*.exe' | Select-Object -First 1).FullName
           if ('${{ steps.ver.outputs.test }}' -eq 'true') {
             # Pré-version de test : pas de latest.json, donc jamais proposée aux mises à jour automatiques.
-            gh release create $tag $setup --prerelease --title "VERIS MOD $v — VERSION DE TEST" --notes-file TEST_NOTES.txt --target '${{ github.sha }}'
+            gh release create $tag $setup --prerelease --title "ViiCord $v — VERSION DE TEST" --notes-file TEST_NOTES.txt --target '${{ github.sha }}'
           } else {
-            gh release create $tag $setup latest.json --title "VERIS MOD $v" --notes-file RELEASE_NOTES.txt --target '${{ github.sha }}'
+            gh release create $tag $setup latest.json --title "ViiCord $v" --notes-file RELEASE_NOTES.txt --target '${{ github.sha }}'
           }

@@ -1,1 +1,1 @@
-Bouton « 🎲 Aléatoire » sur chaque page : tire au sort un favori ★ (ou un son de la catégorie) pour cet événement et l'applique.
+VERIS MOD devient ViiCord, et sa mascotte VERIS devient VIIRUS. Tes réglages, sons et profils sont conservés (dossier migré vers %APPDATA%\ViiCord). Nouvelle page À propos détaillée. Les profils partagés ont maintenant l'extension .viicord (les anciens .veris restent importables). Après la mise à jour, relance Discord une fois.

@@ -8,9 +8,9 @@ using System.Text.RegularExpressions;
 using System.Windows;
 using System.Windows.Media;
 
-namespace Audely.Services;
+namespace ViiCord.Services;
 
-/// <summary>Une ambiance de couleur de VERIS MOD (mêmes valeurs que les 7 maquettes validées).</summary>
+/// <summary>Une ambiance de couleur de ViiCord (mêmes valeurs que les 7 maquettes validées).</summary>
 public sealed record ThemePalette(
     string Key,
     string Name,

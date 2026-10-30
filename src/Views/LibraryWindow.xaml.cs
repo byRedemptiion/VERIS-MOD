@@ -6,11 +6,11 @@ using System.Threading;
 using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
-using Audely.Models;
-using Audely.Services;
-using Audely.ViewModels;
+using ViiCord.Models;
+using ViiCord.Services;
+using ViiCord.ViewModels;
 
-namespace Audely.Views;
+namespace ViiCord.Views;
 
 public partial class LibraryWindow : Window
 {
@@ -60,7 +60,7 @@ public partial class LibraryWindow : Window
             _vm.ReloadSounds();
             Reload();
         }
-        catch (Exception ex) { _dialogs.Error(ex.Message, "VERIS MOD — ajout refusé"); }
+        catch (Exception ex) { _dialogs.Error(ex.Message, "ViiCord — ajout refusé"); }
     }
 
     private void OnPlay(object sender, RoutedEventArgs e)
@@ -68,7 +68,7 @@ public partial class LibraryWindow : Window
         SoundItem? s = Selected;
         if (s == null) return;
         try { _player.Play(s.Path, 100); }
-        catch (Exception ex) { _dialogs.Error(ex.Message, "VERIS MOD — lecture"); }
+        catch (Exception ex) { _dialogs.Error(ex.Message, "ViiCord — lecture"); }
     }
 
     private void OnRename(object sender, RoutedEventArgs e)
@@ -77,7 +77,7 @@ public partial class LibraryWindow : Window
         if (s is not { Kind: SoundKind.User }) return;
         try
         {
-            string? name = _dialogs.Prompt("Nouveau nom :", "VERIS MOD — Renommer", s.Name)?.Trim();
+            string? name = _dialogs.Prompt("Nouveau nom :", "ViiCord — Renommer", s.Name)?.Trim();
             if (string.IsNullOrWhiteSpace(name) || name == s.Name) return;
             LibraryService.Rename(s.Id, name);
             _vm.ReloadSounds();
@@ -85,7 +85,7 @@ public partial class LibraryWindow : Window
             _vm.ReloadProfiles();
             Reload();
         }
-        catch (Exception ex) { _dialogs.Error(ex.Message, "VERIS MOD — renommer"); }
+        catch (Exception ex) { _dialogs.Error(ex.Message, "ViiCord — renommer"); }
     }
 
     private void OnDelete(object sender, RoutedEventArgs e)
@@ -99,16 +99,16 @@ public partial class LibraryWindow : Window
             {
                 _dialogs.Error("Ce son est encore utilisé :\n\n• " + string.Join("\n• ", uses) +
                                "\n\nRestaure ou change ces réglages avant de le supprimer.",
-                               "VERIS MOD — suppression refusée");
+                               "ViiCord — suppression refusée");
                 return;
             }
 
-            if (!_dialogs.Confirm($"Supprimer « {s.Name} » de la bibliothèque ?", "VERIS MOD — Bibliothèque")) return;
+            if (!_dialogs.Confirm($"Supprimer « {s.Name} » de la bibliothèque ?", "ViiCord — Bibliothèque")) return;
 
             LibraryService.Delete(s.Id);
             _vm.ReloadSounds();
             Reload();
         }
-        catch (Exception ex) { _dialogs.Error(ex.Message, "VERIS MOD — suppression"); }
+        catch (Exception ex) { _dialogs.Error(ex.Message, "ViiCord — suppression"); }
     }
 }

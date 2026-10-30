@@ -11,11 +11,11 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Threading;
-using Audely.Services;
-using Audely.ViewModels;
-using Audely.Views;
+using ViiCord.Services;
+using ViiCord.ViewModels;
+using ViiCord.Views;
 
-namespace Audely;
+namespace ViiCord;
 
 public partial class MainWindow : Window
 {
@@ -29,9 +29,8 @@ public partial class MainWindow : Window
         InitializeComponent();
 
         ImageSource? mascot =
-            LoadImage(Path.Combine(AppPaths.AppDir, "VERIS.png"), 160) ??      // fichier perso à côté de l'exe
-            LoadImage(new Uri("pack://application:,,,/Assets/VERIS.png", UriKind.Absolute), 160);  // mascotte intégrée
-        MascotImage.Source = mascot;
+            LoadImage(Path.Combine(AppPaths.AppDir, "VIIRUS.png"), 160) ??      // fichier perso à côté de l'exe
+            LoadImage(new Uri("pack://application:,,,/Assets/VIIRUS.png", UriKind.Absolute), 160);  // mascotte intégrée
         FeaturedMascot.Source = mascot;
         OnboardingMascot.Source = mascot;
         BuildWaveBars();
@@ -68,7 +67,7 @@ public partial class MainWindow : Window
             }
             catch (Exception ex)
             {
-                MessageBox.Show(this, ex.Message, "VERIS MOD — analyse", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(this, ex.Message, "ViiCord — analyse", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         };
     }
@@ -191,8 +190,8 @@ public partial class MainWindow : Window
         if (e.Data.GetData(DataFormats.FileDrop) is not string[] files || files.Length == 0) return;
         e.Handled = true;
 
-        // Un profil partagé (.veris) : importé après la fin du glisser-déposer (la boîte de dialogue est modale).
-        if (string.Equals(Path.GetExtension(files[0]), ProfileShareService.Extension, StringComparison.OrdinalIgnoreCase))
+        // Un profil partagé (.viicord) : importé après la fin du glisser-déposer (la boîte de dialogue est modale).
+        if (ProfileShareService.IsProfileFile(files[0]))
         {
             string profilePath = files[0];
             Dispatcher.BeginInvoke(new Action(() => _vm.ImportProfileFile(profilePath)), DispatcherPriority.Background);

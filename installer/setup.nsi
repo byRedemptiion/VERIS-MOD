@@ -4,23 +4,23 @@
 !include "StrFunc.nsh"
 ${UnStrStr}
 
-!define APP_NAME      "VERIS MOD"
+!define APP_NAME      "ViiCord"
 !ifndef APP_VERSION
   !define APP_VERSION "1.5.1"
 !endif
 !ifndef APP_VERSION4
   !define APP_VERSION4 "${APP_VERSION}.0"
 !endif
-!define APP_EXE       "VerisMod.exe"
+!define APP_EXE       "ViiCord.exe"
 !define APP_PUBLISHER "byRedemptiion"
-!define UNINST_KEY    "Software\Microsoft\Windows\CurrentVersion\Uninstall\VERIS MOD"
+!define UNINST_KEY    "Software\Microsoft\Windows\CurrentVersion\Uninstall\ViiCord"
 !ifndef PUBLISH_DIR
   !define PUBLISH_DIR "..\publish"
 !endif
 
 Name "${APP_NAME}"
-OutFile "VERIS_MOD_Setup_${APP_VERSION}.exe"
-InstallDir "$LOCALAPPDATA\Programs\VERIS MOD"
+OutFile "ViiCord_Setup_${APP_VERSION}.exe"
+InstallDir "$LOCALAPPDATA\Programs\ViiCord"
 InstallDirRegKey HKCU "${UNINST_KEY}" "InstallLocation"
 RequestExecutionLevel user
 SetCompressor /SOLID lzma
@@ -33,8 +33,8 @@ VIAddVersionKey /LANG=1036 "FileDescription" "Installateur de ${APP_NAME}"
 VIAddVersionKey /LANG=1036 "FileVersion" "${APP_VERSION}"
 VIAddVersionKey /LANG=1036 "LegalCopyright" "${APP_PUBLISHER}"
 
-!define MUI_ICON "..\src\Assets\Audely.ico"
-!define MUI_UNICON "..\src\Assets\Audely.ico"
+!define MUI_ICON "..\src\Assets\ViiCord.ico"
+!define MUI_UNICON "..\src\Assets\ViiCord.ico"
 !define MUI_ABORTWARNING
 !define MUI_WELCOMEPAGE_TITLE "Bienvenue dans l'installation de ${APP_NAME}"
 !define MUI_WELCOMEPAGE_TEXT "${APP_NAME} personnalise les sons de Discord : un son, un volume, et un retour au son d'origine en un clic.$\r$\n$\r$\nL'installation est rapide et ne demande aucun droit administrateur. Un raccourci sera ajouté sur le Bureau et dans le menu Démarrer.$\r$\n$\r$\nClique sur Suivant pour continuer."
@@ -55,7 +55,7 @@ VIAddVersionKey /LANG=1036 "LegalCopyright" "${APP_PUBLISHER}"
 Section "Install"
   SetShellVarContext current
 
-  ; Ferme VERIS MOD s'il tourne (mise à jour)
+  ; Ferme ViiCord s'il tourne (mise à jour)
   nsExec::Exec 'taskkill /F /IM ${APP_EXE}'
   Pop $0
   Sleep 1500
@@ -66,11 +66,22 @@ Section "Install"
   File "${PUBLISH_DIR}\sounds\*.wav"
   SetOutPath "$INSTDIR"
 
-  ; Dossiers de réglages (conservés s'ils existent déjà)
-  CreateDirectory "$APPDATA\Audely"
-  CreateDirectory "$APPDATA\Audely\library"
-  CreateDirectory "$APPDATA\Audely\sounds"
-  CreateDirectory "$APPDATA\Audely\backups"
+  ; Les dossiers de réglages (%APPDATA%\ViiCord) sont créés par l'application elle-même : elle y migre aussi
+  ; l'ancien dossier « Audely » sans rien perdre (voir AppPaths.DataDir). Rien à créer ici.
+
+  ; Legacy VERIS MOD / Audely compatibility : nettoyage de l'ancienne installation (ancien nom).
+  nsExec::Exec 'taskkill /F /IM VerisMod.exe'
+  Pop $0
+  Delete "$DESKTOP\VERIS MOD.lnk"
+  Delete "$SMPROGRAMS\VERIS MOD\VERIS MOD.lnk"
+  Delete "$SMPROGRAMS\VERIS MOD\Désinstaller VERIS MOD.lnk"
+  RMDir "$SMPROGRAMS\VERIS MOD"
+  Delete "$LOCALAPPDATA\Programs\VERIS MOD\VerisMod.exe"
+  Delete "$LOCALAPPDATA\Programs\VERIS MOD\sounds\*.wav"
+  RMDir "$LOCALAPPDATA\Programs\VERIS MOD\sounds"
+  Delete "$LOCALAPPDATA\Programs\VERIS MOD\Uninstall.exe"
+  RMDir "$LOCALAPPDATA\Programs\VERIS MOD"
+  DeleteRegKey HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\VERIS MOD"
 
   ; Raccourcis
   CreateShortcut "$DESKTOP\${APP_NAME}.lnk" "$INSTDIR\${APP_EXE}" "" "$INSTDIR\${APP_EXE}" 0
@@ -90,7 +101,7 @@ Section "Install"
   WriteRegDWORD HKCU "${UNINST_KEY}" "NoModify" 1
   WriteRegDWORD HKCU "${UNINST_KEY}" "NoRepair" 1
 
-  ; Mise à jour depuis l'application (setup lancé avec /S) : on relance VERIS MOD tout seul.
+  ; Mise à jour depuis l'application (setup lancé avec /S) : on relance ViiCord tout seul.
   ${If} ${Silent}
     Exec '"$INSTDIR\${APP_EXE}"'
   ${EndIf}
@@ -99,10 +110,16 @@ SectionEnd
 Section "Uninstall"
   SetShellVarContext current
 
-  ; Si VERIS MOD est encore actif dans Discord, on prévient (le hook doit être retiré par l'appli).
+  ; Dossier des réglages : ViiCord (ou l'ancien dossier Audely si la migration n'a pas encore eu lieu).
+  StrCpy $R8 "$APPDATA\ViiCord"
+  ${IfNot} ${FileExists} "$R8\install-state.json"
+    StrCpy $R8 "$APPDATA\Audely"
+  ${EndIf}
+
+  ; Si ViiCord est encore actif dans Discord, on prévient (le hook doit être retiré par l'appli).
   StrCpy $R9 "0"
-  ${If} ${FileExists} "$APPDATA\Audely\install-state.json"
-    FileOpen $0 "$APPDATA\Audely\install-state.json" r
+  ${If} ${FileExists} "$R8\install-state.json"
+    FileOpen $0 "$R8\install-state.json" r
     ${Unless} ${Errors}
       loop:
         FileRead $0 $1
@@ -126,7 +143,7 @@ Section "Uninstall"
   ${EndIf}
 
   ${If} $R9 == "1"
-    MessageBox MB_YESNO|MB_ICONEXCLAMATION "VERIS MOD est encore actif dans Discord.$\r$\n$\r$\nPour que Discord retrouve ses fichiers d'origine, ouvre VERIS MOD et clique sur « Désinstaller » (menu de gauche) AVANT de continuer.$\r$\n$\r$\nDésinstaller le programme quand même ? (tes réglages et sauvegardes sont conservés)" /SD IDYES IDYES +2
+    MessageBox MB_YESNO|MB_ICONEXCLAMATION "ViiCord est encore actif dans Discord.$\r$\n$\r$\nPour que Discord retrouve ses fichiers d'origine, ouvre ViiCord et clique sur « Désinstaller » (menu de gauche) AVANT de continuer.$\r$\n$\r$\nDésinstaller le programme quand même ? (tes réglages et sauvegardes sont conservés)" /SD IDYES IDYES +2
     Abort
   ${EndIf}
 
@@ -149,9 +166,14 @@ Section "Uninstall"
 
   ; Réglages et sons perso : on demande (jamais supprimés si le hook est encore actif).
   ${If} $R9 != "1"
-  ${AndIf} ${FileExists} "$APPDATA\Audely\*.*"
-    MessageBox MB_YESNO|MB_ICONQUESTION "Supprimer aussi tes réglages et sons perso (dossier Audely) ?$\r$\n$\r$\nChoisis Non si tu comptes réinstaller VERIS MOD plus tard." /SD IDNO IDNO keepdata
-    RMDir /r "$APPDATA\Audely"
+  ${AndIf} ${FileExists} "$R8\*.*"
+    MessageBox MB_YESNO|MB_ICONQUESTION "Supprimer aussi tes réglages et sons perso (dossier ViiCord) ?$\r$\n$\r$\nChoisis Non si tu comptes réinstaller ViiCord plus tard." /SD IDNO IDNO keepdata
+    ; Legacy Audely compatibility : « Audely » est un simple lien vers « ViiCord » après la migration.
+    RMDir "$APPDATA\Audely"
+    RMDir /r "$APPDATA\ViiCord"
+    ${If} ${FileExists} "$APPDATA\Audely\*.*"
+      RMDir /r "$APPDATA\Audely"
+    ${EndIf}
     keepdata:
   ${EndIf}
 SectionEnd

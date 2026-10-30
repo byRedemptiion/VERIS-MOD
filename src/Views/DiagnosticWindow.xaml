@@ -1,7 +1,7 @@
-<Window x:Class="Audely.Views.DiagnosticWindow"
+<Window x:Class="ViiCord.Views.DiagnosticWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="VERIS MOD — Diagnostic" Width="900" Height="640" MinWidth="620" MinHeight="420"
+        Title="ViiCord — Diagnostic" Width="900" Height="640" MinWidth="620" MinHeight="420"
         WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
         Background="{DynamicResource BgBrush}" Foreground="{DynamicResource TextBrush}"
         FontFamily="/Assets/Fonts/#Manrope, Segoe UI Variable Display, Segoe UI">
@@ -18,7 +18,7 @@
         <ColumnDefinition Width="260"/>
       </Grid.ColumnDefinitions>
       <StackPanel>
-        <TextBlock Text="Diagnostic VERIS MOD" FontSize="20" FontWeight="Bold"/>
+        <TextBlock Text="Diagnostic ViiCord" FontSize="20" FontWeight="Bold"/>
         <TextBlock x:Name="CountText" Foreground="{DynamicResource MutedBrush}" FontSize="11" Margin="0,2,0,0"/>
       </StackPanel>
       <TextBox x:Name="FilterBox" Grid.Column="1" VerticalAlignment="Center" MinHeight="30"

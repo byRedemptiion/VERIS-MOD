@@ -7,10 +7,10 @@ using System.Threading.Tasks;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
-using Audely.Services;
-using Audely.ViewModels;
+using ViiCord.Services;
+using ViiCord.ViewModels;
 
-namespace Audely.Views;
+namespace ViiCord.Views;
 
 public partial class DiagnosticWindow : Window
 {
@@ -58,24 +58,24 @@ public partial class DiagnosticWindow : Window
             await _vm.ScanAsync();
             Rebuild();
         }
-        catch (Exception ex) { _dialogs.Error(ex.Message, "VERIS MOD — diagnostic"); }
+        catch (Exception ex) { _dialogs.Error(ex.Message, "ViiCord — diagnostic"); }
     }
 
     private void OnCopy(object sender, RoutedEventArgs e)
     {
         try { Clipboard.SetText(string.Join(Environment.NewLine, _lines)); }
-        catch (Exception ex) { _dialogs.Error(ex.Message, "VERIS MOD — diagnostic"); }
+        catch (Exception ex) { _dialogs.Error(ex.Message, "ViiCord — diagnostic"); }
     }
 
     private void OnExport(object sender, RoutedEventArgs e)
     {
         try
         {
-            string? path = _dialogs.PickSaveTextFile("audely-diagnostic-" + DateTime.Now.ToString("yyyyMMdd-HHmmss") + ".txt");
+            string? path = _dialogs.PickSaveTextFile("viicord-diagnostic-" + DateTime.Now.ToString("yyyyMMdd-HHmmss") + ".txt");
             if (path == null) return;
             System.IO.File.WriteAllText(path, string.Join(Environment.NewLine, _lines), new UTF8Encoding(false));
-            _dialogs.Info("Diagnostic exporté :\n" + path, "VERIS MOD — diagnostic");
+            _dialogs.Info("Diagnostic exporté :\n" + path, "ViiCord — diagnostic");
         }
-        catch (Exception ex) { _dialogs.Error(ex.Message, "VERIS MOD — diagnostic"); }
+        catch (Exception ex) { _dialogs.Error(ex.Message, "ViiCord — diagnostic"); }
     }
 }

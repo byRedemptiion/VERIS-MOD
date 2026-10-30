@@ -7,15 +7,15 @@ using System.Threading.Tasks;
 using System.Collections.ObjectModel;
 using System.Windows.Input;
 using System.Windows.Media;
-using Audely.Models;
-using Audely.Services;
+using ViiCord.Models;
+using ViiCord.Services;
 
-namespace Audely.ViewModels;
+namespace ViiCord.ViewModels;
 
 public interface IDialogService
 {
-    void Info(string message, string title = "VERIS MOD");
-    void Error(string message, string title = "VERIS MOD");
+    void Info(string message, string title = "ViiCord");
+    void Error(string message, string title = "ViiCord");
     bool Confirm(string message, string title);
     string? Prompt(string message, string title, string defaultValue);
     string? PickAudioFile();
@@ -56,7 +56,7 @@ public sealed class MainViewModel : ObservableObject
     private string _backupInfo = "Sauvegarde : en attente.";
     private string _configInfo = "Sons configurés : en attente.";
     private string _safetyInfo = "Le scan ne modifie aucun fichier Discord.";
-    private string _hookPanelTitle = "État VERIS MOD";
+    private string _hookPanelTitle = "État ViiCord";
     private Brush _hookPanelBrush = GrayText;
     private Brush _hookPanelDot = GrayDot;
     private string _footerDiscordText = "Non analysé";
@@ -105,7 +105,7 @@ public sealed class MainViewModel : ObservableObject
         CloseColorPickerCommand = new RelayCommand(() => { IsColorPickerOpen = false; SaveThemeSettings(); });
         PickPresetColorCommand = new RelayCommand(p => { if (p is string hex) CustomHex = hex; });
         FinishOnboardingCommand = new RelayCommand(FinishOnboarding);
-        ApplyVerisVoiceCommand = new AsyncRelayCommand(ApplyVerisVoiceAsync, () => CanApplyAnything && !IsBusy, OnError);
+        ApplyViirusVoiceCommand = new AsyncRelayCommand(ApplyViirusVoiceAsync, () => CanApplyAnything && !IsBusy, OnError);
         NextPageCommand = new RelayCommand(() => Navigate(+1));
         PreviousPageCommand = new RelayCommand(() => Navigate(-1));
         GoToPageCommand = new RelayCommand(p => { if (p is int i) GoToPage(i); });
@@ -161,8 +161,8 @@ public sealed class MainViewModel : ObservableObject
         {
             if (manual)
                 _dialogs.Info("Les mises à jour automatiques concernent la version installée avec le setup " +
-                              "(VERIS_MOD_Setup). Cette copie ne s'installe pas par-dessus elle-même.",
-                              "VERIS MOD — Mises à jour");
+                              "(ViiCord_Setup). Cette copie ne s'installe pas par-dessus elle-même.",
+                              "ViiCord — Mises à jour");
             return;
         }
 
@@ -171,11 +171,11 @@ public sealed class MainViewModel : ObservableObject
             _update = await UpdateService.CheckAsync();
             RefreshUpdateState();
             if (manual && _update == null)
-                _dialogs.Info("Tu as déjà la dernière version (v" + AppInfo.Version + ").", "VERIS MOD — Mises à jour");
+                _dialogs.Info("Tu as déjà la dernière version (v" + AppInfo.Version + ").", "ViiCord — Mises à jour");
         }
         catch (Exception ex)
         {
-            if (manual) _dialogs.Error("Impossible de vérifier les mises à jour :\n" + ex.Message, "VERIS MOD — Mises à jour");
+            if (manual) _dialogs.Error("Impossible de vérifier les mises à jour :\n" + ex.Message, "ViiCord — Mises à jour");
         }
     }
 
@@ -184,10 +184,10 @@ public sealed class MainViewModel : ObservableObject
         UpdateInfo? info = _update;
         if (info == null) return;
 
-        string question = "VERIS MOD " + info.Version + " va être téléchargé puis installé.\n\n" +
+        string question = "ViiCord " + info.Version + " va être téléchargé puis installé.\n\n" +
                           "L'application va se fermer et se relancer automatiquement. " +
                           "Tes réglages et tes sons sont conservés.\n\nContinuer ?";
-        if (!_dialogs.Confirm(question, "VERIS MOD — Mise à jour")) return;
+        if (!_dialogs.Confirm(question, "ViiCord — Mise à jour")) return;
 
         IsUpdating = true;
         UpdateProgressText = "Téléchargement… 0 %";
@@ -386,6 +386,7 @@ public sealed class MainViewModel : ObservableObject
     public string BusyText { get => _busyText; private set => Set(ref _busyText, value); }
     public string PauseText { get => _pauseText; private set => Set(ref _pauseText, value); }
     public string VersionText => "v" + AppInfo.Version;
+    public string FooterVersionText => "ViiCord " + VersionText;
 
     // ---------------------------------------------------------------- commandes
 
@@ -413,7 +414,7 @@ public sealed class MainViewModel : ObservableObject
     public ICommand CloseColorPickerCommand { get; }
     public ICommand PickPresetColorCommand { get; }
     public ICommand FinishOnboardingCommand { get; }
-    public ICommand ApplyVerisVoiceCommand { get; }
+    public ICommand ApplyViirusVoiceCommand { get; }
     public ICommand NextPageCommand { get; }
     public ICommand PreviousPageCommand { get; }
     public ICommand GoToPageCommand { get; }
@@ -511,7 +512,7 @@ public sealed class MainViewModel : ObservableObject
         }
     }
 
-    // ---------------------------------------------------------------- partage de profils (.veris)
+    // ---------------------------------------------------------------- partage de profils (.viicord)
 
     private void ExportProfile()
     {
@@ -519,7 +520,7 @@ public sealed class MainViewModel : ObservableObject
         if (profile == null) return;
         if (profile.IsBuiltin)
         {
-            ShowToast("« " + profile.Name + " » est déjà intégré à VERIS MOD : choisis (ou sauve) un de tes profils pour l'exporter.");
+            ShowToast("« " + profile.Name + " » est déjà intégré à ViiCord : choisis (ou sauve) un de tes profils pour l'exporter.");
             return;
         }
 
@@ -528,7 +529,7 @@ public sealed class MainViewModel : ObservableObject
             if (!_dialogs.Confirm(
                     $"Exporter le profil « {profile.Name} » dans un fichier {ProfileShareService.Extension} ?\n\n" +
                     "Le fichier contiendra les sons perso utilisés par ce profil. Ne le partage que si tu as le droit de diffuser ces sons.",
-                    "VERIS MOD — exporter un profil")) return;
+                    "ViiCord — exporter un profil")) return;
 
             string? path = _dialogs.PickSaveProfileFile(ProfileShareService.SafeFileStem(profile.Name) + ProfileShareService.Extension);
             if (path == null) return;
@@ -537,7 +538,7 @@ public sealed class MainViewModel : ObservableObject
             string tail = result.Skipped > 0 ? $" ({result.Skipped} événement(s) ignoré(s) : son introuvable)" : "";
             ShowToast($"Profil « {profile.Name} » exporté : {result.Targets} événement(s), {result.Sounds} son(s) perso{tail}.");
         }
-        catch (Exception ex) { _dialogs.Error(ex.Message, "VERIS MOD — export refusé"); }
+        catch (Exception ex) { _dialogs.Error(ex.Message, "ViiCord — export refusé"); }
     }
 
     private void ImportProfileFromDialog()
@@ -546,7 +547,7 @@ public sealed class MainViewModel : ObservableObject
         if (path != null) ImportProfileFile(path);
     }
 
-    /// <summary>Importe un fichier .veris (bouton Importer ou fichier glissé sur la fenêtre).</summary>
+    /// <summary>Importe un fichier .viicord (bouton Importer ou fichier glissé sur la fenêtre).</summary>
     public void ImportProfileFile(string path)
     {
         try
@@ -563,7 +564,7 @@ public sealed class MainViewModel : ObservableObject
                 $"{plan.TargetCount} événement(s), {plan.SoundCount} son(s) perso à ajouter à ta bibliothèque.\n" +
                 (exists ? "\nUn profil du même nom existe déjà : il sera remplacé.\n" : "") +
                 "\nN'importe que des profils de personnes de confiance. Rien n'est appliqué à Discord tant que tu ne cliques pas sur « Charger ».";
-            if (!_dialogs.Confirm(message, "VERIS MOD — importer un profil")) return;
+            if (!_dialogs.Confirm(message, "ViiCord — importer un profil")) return;
 
             Profile saved = ProfileShareService.Commit(plan, name);
             ReloadSounds();
@@ -571,7 +572,7 @@ public sealed class MainViewModel : ObservableObject
             SelectedProfile = Profiles.FirstOrDefault(p => p.Name == saved.Name) ?? SelectedProfile;
             ShowToast($"Profil « {saved.Name} » importé. Clique sur « Charger » pour l'utiliser.");
         }
-        catch (Exception ex) { _dialogs.Error(ex.Message, "VERIS MOD — import refusé"); }
+        catch (Exception ex) { _dialogs.Error(ex.Message, "ViiCord — import refusé"); }
     }
 
     // ---------------------------------------------------------------- construction des cartes
@@ -612,7 +613,7 @@ public sealed class MainViewModel : ObservableObject
 
         _dialogs.Info(count > 0
             ? $"{count} identifiant(s) de son détecté(s) et enregistré(s)."
-            : "Aucun nouvel identifiant détecté dans le cache Discord.", "VERIS MOD — Détection");
+            : "Aucun nouvel identifiant détecté dans le cache Discord.", "ViiCord — Détection");
     }
 
     private void ApplySnapshot(ScanSnapshot s)
@@ -627,12 +628,12 @@ public sealed class MainViewModel : ObservableObject
         }
         else if (s.Core != null && s.ExternalMod != null)
         {
-            notice = s.ExternalMod + " — VERIS MOD ne modifiera rien.";
+            notice = s.ExternalMod + " — ViiCord ne modifiera rien.";
         }
         else if (s.Core != null && !s.HookInstalled)
         {
-            notice = "VERIS MOD n'est pas encore activé dans Discord. " +
-                     "Clique sur « Activer VERIS MOD » (menu de gauche) : Discord sera fermé puis relancé automatiquement.";
+            notice = "ViiCord n'est pas encore activé dans Discord. " +
+                     "Clique sur « Activer ViiCord » (menu de gauche) : Discord sera fermé puis relancé automatiquement.";
         }
         Notice = notice;
         PauseText = s.Paused ? "Réactiver" : "Pause";
@@ -645,10 +646,10 @@ public sealed class MainViewModel : ObservableObject
             BackupInfo = "Sauvegarde : indisponible.";
             ConfigInfo = "Sons configurés : non vérifiés.";
             SetGlobal(ErrorStatus, "Discord introuvable");
-            SetHookPanel("VERIS MOD prêt", GrayText, GrayDot);
+            SetHookPanel("ViiCord prêt", GrayText, GrayDot);
             FooterDiscordText = "Non détecté";
             FooterDiscordDot = RedDot;
-            FooterHookText = "VERIS MOD prêt";
+            FooterHookText = "ViiCord prêt";
             FooterHookDot = GrayDot;
         }
         else
@@ -656,8 +657,8 @@ public sealed class MainViewModel : ObservableObject
             GlobalStatusSub = $"Discord {s.Core.Channel} • {s.Core.AppVersion}";
             EngineInfo = "Moteur : Blob Hook + Overlay Bridge + Call Fix • remplacement ciblé des sons Discord.";
             HookInfo = s.ExternalMod != null
-                ? "Hook VERIS MOD : application désactivée — mod tiers détecté."
-                : "Hook VERIS MOD : core=" + (s.HookInstalled ? "OK" : "non") +
+                ? "Hook ViiCord : application désactivée — mod tiers détecté."
+                : "Hook ViiCord : core=" + (s.HookInstalled ? "OK" : "non") +
                   " • overlay=" + (s.Overlay == null ? "absent" : s.OverlayHookInstalled ? "OK" : "non");
             BackupInfo = $"Sauvegarde : core={s.CoreBackupText} • overlay={s.OverlayBackupText}";
             ConfigInfo = "Sons configurés : " + s.ConfiguredCount;
@@ -667,17 +668,17 @@ public sealed class MainViewModel : ObservableObject
             else if (s.OverlayHookInstalled && s.OverlayBackup is not { Valid: true })
                 SetGlobal(ErrorStatus, "Sauvegarde overlay invalide");
             else if (s.Paused)
-                SetGlobal(PausedStatus, "VERIS MOD en pause");
+                SetGlobal(PausedStatus, "ViiCord en pause");
             else if (s.NeedsRepair)
                 SetGlobal(WarnStatus, "Réparation nécessaire");
             else if (s.FullyActive)
-                SetGlobal(OkStatus, "VERIS MOD actif");
+                SetGlobal(OkStatus, "ViiCord actif");
             else
                 SetGlobal(OkStatus, "Prêt");
 
             if (s.NeedsRepair) SetHookPanel("Réparation nécessaire", YellowText, YellowDot);
             else if (s.FullyActive) SetHookPanel("Hook actif", GreenText, GreenDot);
-            else SetHookPanel("VERIS MOD prêt", GrayText, GrayDot);
+            else SetHookPanel("ViiCord prêt", GrayText, GrayDot);
 
             FooterDiscordText = $"{s.Core.Channel} {s.Core.AppVersion}";
             FooterDiscordDot = GreenDot;
@@ -714,7 +715,7 @@ public sealed class MainViewModel : ObservableObject
         Sounds.Clear();
         foreach (SoundItem s in fresh) Sounds.Add(s);
 
-        // Chaque carte ne propose que les sons de sa catégorie (voix V.E.R.I.S, sons ajoutés ici, anciens sons communs).
+        // Chaque carte ne propose que les sons de sa catégorie (voix VIIRUS, sons ajoutés ici, anciens sons communs).
         foreach (EventCardViewModel card in AllCards)
         {
             string category = card.Id;
@@ -733,7 +734,7 @@ public sealed class MainViewModel : ObservableObject
     {
         string? previous = SelectedProfile?.Name;
         Profiles.Clear();
-        Profiles.Add(LibraryService.BuiltinProfile());      // « Voix VERIS » : toujours en tête, non supprimable
+        Profiles.Add(LibraryService.BuiltinProfile());      // « Voix VIIRUS » : toujours en tête, non supprimable
         foreach (Profile p in ProfileService.Read().Profiles
                      .Where(p => !string.Equals(p.Name, LibraryService.BuiltinProfileName, StringComparison.OrdinalIgnoreCase))
                      .OrderBy(p => p.Name, StringComparer.CurrentCultureIgnoreCase))
@@ -743,7 +744,7 @@ public sealed class MainViewModel : ObservableObject
             Profiles.FirstOrDefault(p => p.Name == previous) ?? Profiles.FirstOrDefault();
     }
 
-    /// <summary>Relit la configuration et met à jour les cartes (Update-AudelyCards).</summary>
+    /// <summary>Relit la configuration et met à jour les cartes (équivalent de l'ancien script PowerShell).</summary>
     public void RefreshCards()
     {
         RuntimeConfig cfg;
@@ -785,7 +786,7 @@ public sealed class MainViewModel : ObservableObject
         catch (Exception ex)
         {
             IsPlaying = false;
-            _dialogs.Error(ex.Message, "VERIS MOD — Test du son");
+            _dialogs.Error(ex.Message, "ViiCord — Test du son");
         }
     }
 
@@ -840,9 +841,9 @@ public sealed class MainViewModel : ObservableObject
         {
             if (confirm && !_dialogs.Confirm(
                     "Discord doit être fermé quelques secondes pour modifier ses fichiers en sécurité.\n\n" +
-                    "VERIS MOD va le fermer puis le relancer automatiquement.\n" +
+                    "ViiCord va le fermer puis le relancer automatiquement.\n" +
                     "Enregistre d'abord ce que tu écris dans Discord.\n\nContinuer ?",
-                    "VERIS MOD — Discord sera relancé"))
+                    "ViiCord — Discord sera relancé"))
             {
                 throw new OperationCanceledException();
             }
@@ -887,7 +888,7 @@ public sealed class MainViewModel : ObservableObject
         DiscordCoreInfo? core = _snapshot.Core;
 
         if (core != null && _snapshot.ExternalMod != null && !_snapshot.HookInstalled)
-            throw new InvalidOperationException(_snapshot.ExternalMod + ". VERIS MOD refuse l'injection pour éviter un conflit.");
+            throw new InvalidOperationException(_snapshot.ExternalMod + ". ViiCord refuse l'injection pour éviter un conflit.");
 
         if (core != null && NeedsHookWork)
         {
@@ -898,7 +899,7 @@ public sealed class MainViewModel : ObservableObject
                 ConfigService.SyncNeedles();
                 ConfigService.SyncRandomVariants();
                 HookService.InstallOverlay(core);
-            }, "Installation de VERIS MOD dans Discord…", confirm: true);
+            }, "Installation de ViiCord dans Discord…", confirm: true);
         }
         else
         {
@@ -955,7 +956,7 @@ public sealed class MainViewModel : ObservableObject
         if (!_dialogs.Confirm(
                 "Appliquer les sélections actuellement visibles ?\n\n" +
                 "Chaque catégorie sera personnalisée avec son son et son volume actuels.",
-                "VERIS MOD — Tout appliquer")) return;
+                "ViiCord — Tout appliquer")) return;
 
         var picks = AllCards
             .Where(c => c.SelectedSound != null)
@@ -1000,7 +1001,7 @@ public sealed class MainViewModel : ObservableObject
             try { ConfigService.SyncRandomVariants(); } catch { }
             AfterConfigChange();
         }
-        catch (Exception ex) { _dialogs.Error(ex.Message, "VERIS MOD — restauration refusée"); }
+        catch (Exception ex) { _dialogs.Error(ex.Message, "ViiCord — restauration refusée"); }
     }
 
     private void RestoreAll()
@@ -1012,7 +1013,7 @@ public sealed class MainViewModel : ObservableObject
             AfterConfigChange();
             ShowToast("Tous les sons utilisent de nouveau Discord natif. Ta bibliothèque est conservée.");
         }
-        catch (Exception ex) { _dialogs.Error(ex.Message, "VERIS MOD — restauration refusée"); }
+        catch (Exception ex) { _dialogs.Error(ex.Message, "ViiCord — restauration refusée"); }
     }
 
     // ---------------------------------------------------------------- activation, réparation, pause, désinstallation
@@ -1026,12 +1027,12 @@ public sealed class MainViewModel : ObservableObject
         DiscordCoreInfo core = _snapshot.Core
             ?? throw new InvalidOperationException("Discord non détecté.");
         if (_snapshot.ExternalMod != null)
-            throw new InvalidOperationException(_snapshot.ExternalMod + ". VERIS MOD refuse l'injection pour éviter un conflit.");
+            throw new InvalidOperationException(_snapshot.ExternalMod + ". ViiCord refuse l'injection pour éviter un conflit.");
 
         if (!NeedsHookWork)
         {
             await Task.Run(ClearPausedFlag);
-            await FinishAsync("VERIS MOD est déjà actif dans Discord.");
+            await FinishAsync("ViiCord est déjà actif dans Discord.");
             return;
         }
 
@@ -1041,9 +1042,9 @@ public sealed class MainViewModel : ObservableObject
             PrepareConfigQuiet(core, sounds);
             HookService.InstallAll(core);
             ClearPausedFlag();
-        }, "Activation de VERIS MOD dans Discord…", confirm);
+        }, "Activation de ViiCord dans Discord…", confirm);
 
-        await FinishAsync("VERIS MOD est activé dans Discord.\nChoisis un son puis clique sur « Appliquer ».");
+        await FinishAsync("ViiCord est activé dans Discord.\nChoisis un son puis clique sur « Appliquer ».");
     }
 
     /// <summary>Proposition automatique au lancement : première utilisation ou Discord mis à jour.</summary>
@@ -1056,13 +1057,13 @@ public sealed class MainViewModel : ObservableObject
         if (!configured && _snapshot.Settings.ActivationDeclined) return;
 
         string message = (configured
-            ? "Discord s'est mis à jour : VERIS MOD doit être réinstallé pour que tes sons soient de nouveau appliqués.\n\n"
-            : "VERIS MOD n'est pas encore activé dans Discord.\n\n") +
-            "VERIS MOD va fermer Discord quelques secondes, installer le hook avec une sauvegarde vérifiée " +
+            ? "Discord s'est mis à jour : ViiCord doit être réinstallé pour que tes sons soient de nouveau appliqués.\n\n"
+            : "ViiCord n'est pas encore activé dans Discord.\n\n") +
+            "ViiCord va fermer Discord quelques secondes, installer le hook avec une sauvegarde vérifiée " +
             "(SHA-256), puis relancer Discord automatiquement.\n\n" +
             "Enregistre d'abord ce que tu écris dans Discord.\n\nActiver maintenant ?";
 
-        if (!_dialogs.Confirm(message, "VERIS MOD — Activation"))
+        if (!_dialogs.Confirm(message, "ViiCord — Activation"))
         {
             if (!configured)
             {
@@ -1089,7 +1090,7 @@ public sealed class MainViewModel : ObservableObject
         if (_snapshot.ConfiguredCount == 0)
             throw new InvalidOperationException("Aucun son n'est configuré. Rien à réparer.");
         if (_snapshot.ExternalMod != null)
-            throw new InvalidOperationException(_snapshot.ExternalMod + ". VERIS MOD refuse l'injection pour éviter un conflit.");
+            throw new InvalidOperationException(_snapshot.ExternalMod + ". ViiCord refuse l'injection pour éviter un conflit.");
 
         List<SoundItem> sounds = Sounds.ToList();
         await RunWithDiscordClosedAsync(core, () =>
@@ -1097,9 +1098,9 @@ public sealed class MainViewModel : ObservableObject
             PrepareConfigQuiet(core, sounds);
             HookService.InstallAll(core);
             ClearPausedFlag();
-        }, "Réparation de VERIS MOD…", confirm: true);
+        }, "Réparation de ViiCord…", confirm: true);
 
-        await FinishAsync("VERIS MOD a été réparé pour la version actuelle de Discord.");
+        await FinishAsync("ViiCord a été réparé pour la version actuelle de Discord.");
     }
 
     private async Task TogglePauseAsync()
@@ -1108,7 +1109,7 @@ public sealed class MainViewModel : ObservableObject
         DiscordCoreInfo core = _snapshot.Core
             ?? throw new InvalidOperationException("Discord non détecté.");
         if (_snapshot.ConfiguredCount == 0)
-            throw new InvalidOperationException("Aucun son VERIS MOD n'est configuré.");
+            throw new InvalidOperationException("Aucun son ViiCord n'est configuré.");
 
         bool pause = !_snapshot.Paused;
         List<SoundItem> sounds = Sounds.ToList();
@@ -1121,7 +1122,7 @@ public sealed class MainViewModel : ObservableObject
                 {
                     HookService.RestoreAll(core);
                     SetPausedFlag(true);
-                }, "Mise en pause de VERIS MOD…", confirm: true);
+                }, "Mise en pause de ViiCord…", confirm: true);
             }
             else
             {
@@ -1131,14 +1132,14 @@ public sealed class MainViewModel : ObservableObject
         else if (NeedsHookWork)
         {
             if (_snapshot.ExternalMod != null)
-                throw new InvalidOperationException(_snapshot.ExternalMod + ". VERIS MOD refuse l'injection pour éviter un conflit.");
+                throw new InvalidOperationException(_snapshot.ExternalMod + ". ViiCord refuse l'injection pour éviter un conflit.");
 
             await RunWithDiscordClosedAsync(core, () =>
             {
                 PrepareConfigQuiet(core, sounds);
                 HookService.InstallAll(core);
                 SetPausedFlag(false);
-            }, "Réactivation de VERIS MOD…", confirm: true);
+            }, "Réactivation de ViiCord…", confirm: true);
         }
         else
         {
@@ -1151,10 +1152,10 @@ public sealed class MainViewModel : ObservableObject
     private async Task UninstallAsync()
     {
         if (!_dialogs.Confirm(
-                "Retirer VERIS MOD de Discord ?\n\n" +
+                "Retirer ViiCord de Discord ?\n\n" +
                 "Les fichiers originaux de Discord seront restaurés (vérifiés par SHA-256) et tous les sons " +
                 "reviendront à Discord natif. Ta bibliothèque de sons est conservée.",
-                "VERIS MOD — Désinstaller du Discord")) return;
+                "ViiCord — Désinstaller du Discord")) return;
 
         await RefreshSnapshotAsync();
         DiscordCoreInfo core = _snapshot.Core
@@ -1178,12 +1179,12 @@ public sealed class MainViewModel : ObservableObject
             });
         }
 
-        await FinishAsync("VERIS MOD a été retiré de Discord. Les fichiers d'origine sont restaurés.");
+        await FinishAsync("ViiCord a été retiré de Discord. Les fichiers d'origine sont restaurés.");
     }
 
-    // ---------------------------------------------------------------- voix V.E.R.I.S
+    // ---------------------------------------------------------------- voix VIIRUS
 
-    private static readonly (string Card, string Sound)[] VerisVoice =
+    private static readonly (string Card, string Sound)[] ViirusVoice =
     {
         ("message1",     "builtin:veris_message"),
         ("user_join",    "builtin:veris_join"),
@@ -1198,23 +1199,23 @@ public sealed class MainViewModel : ObservableObject
         ("call_ringing", "builtin:veris_ringing"),
     };
 
-    /// <summary>Applique la voix V.E.R.I.S aux 11 événements d'un seul clic.</summary>
-    private async Task ApplyVerisVoiceAsync()
+    /// <summary>Applique la voix VIIRUS aux 11 événements d'un seul clic.</summary>
+    private async Task ApplyViirusVoiceAsync()
     {
         var picks = new List<(string Id, SoundItem Sound)>();
-        foreach (var (cardId, soundId) in VerisVoice)
+        foreach (var (cardId, soundId) in ViirusVoice)
         {
             SoundItem sound = Sounds.FirstOrDefault(x => x.Id == soundId)
-                ?? throw new InvalidOperationException("Un fichier de la voix V.E.R.I.S est introuvable (dossier « sounds » à côté de l'application). Réinstalle VERIS MOD.");
+                ?? throw new InvalidOperationException("Un fichier de la voix VIIRUS est introuvable (dossier « sounds » à côté de l'application). Réinstalle ViiCord.");
             AudioFiles.Validate(sound.Path);
             picks.Add((cardId, sound));
         }
 
         if (!_dialogs.Confirm(
-                "Activer la voix V.E.R.I.S ?\n\n" +
+                "Activer la voix VIIRUS ?\n\n" +
                 "Les 11 événements (messages, micro, casque, appels…) seront annoncés par la voix du robot. " +
                 "Tu peux tout annuler avec « Tout restaurer ».",
-                "VERIS MOD — Voix V.E.R.I.S")) return;
+                "ViiCord — Voix VIIRUS")) return;
 
         // Les menus de chaque carte montrent le son choisi.
         foreach (var (id, sound) in picks)
@@ -1232,7 +1233,7 @@ public sealed class MainViewModel : ObservableObject
             foreach (var (id, sound) in picks) ConfigService.SetTarget(id, sound, 100);
             ClearPausedFlag();
         });
-        ShowToast("Voix V.E.R.I.S activée sur les 11 événements.");
+        ShowToast("Voix VIIRUS activée sur les 11 événements.");
     }
 
     // ---------------------------------------------------------------- glisser-déposer
@@ -1266,7 +1267,7 @@ public sealed class MainViewModel : ObservableObject
             if (added != null) card.SelectedSound = added;
             ShowToast($"« {entry.Name} » ajouté à « {card.Title} ». Clique sur Appliquer pour l'utiliser.");
         }
-        catch (Exception ex) { _dialogs.Error(ex.Message, "VERIS MOD — ajout refusé"); }
+        catch (Exception ex) { _dialogs.Error(ex.Message, "ViiCord — ajout refusé"); }
     }
 
     // ---------------------------------------------------------------- favoris et mode aléatoire
@@ -1286,7 +1287,7 @@ public sealed class MainViewModel : ObservableObject
                 ? $"★ « {sound.Name} » est maintenant favori pour « {card.Title} »."
                 : $"« {sound.Name} » n'est plus favori.");
         }
-        catch (Exception ex) { _dialogs.Error(ex.Message, "VERIS MOD — favoris"); }
+        catch (Exception ex) { _dialogs.Error(ex.Message, "ViiCord — favoris"); }
     }
 
     private bool _randomEachEvent;
@@ -1349,9 +1350,9 @@ public sealed class MainViewModel : ObservableObject
         ShowToast($"Aléatoire auto activé sur {eligible.Count} catégorie(s). Si Discord est ouvert, relance-le une fois.");
     }
 
-    /// <summary>Le script installé dans le dossier VERIS MOD vient d'être mis à jour : Discord doit le relire.</summary>
+    /// <summary>Le script installé dans le dossier ViiCord vient d'être mis à jour : Discord doit le relire.</summary>
     public void NotifyModuleUpdated() =>
-        ShowToast("Le module VERIS MOD de Discord a été mis à jour : relance Discord pour en profiter.");
+        ShowToast("Le module ViiCord de Discord a été mis à jour : relance Discord pour en profiter.");
 
     /// <summary>Tire au hasard un favori par catégorie (là où il y en a) et l'applique d'un coup.</summary>
     private async Task RandomizeAsync()
@@ -1395,11 +1396,11 @@ public sealed class MainViewModel : ObservableObject
     {
         try
         {
-            string? name = _dialogs.Prompt("Nom du profil :", "VERIS MOD — Nouveau profil", "Mon profil")?.Trim();
+            string? name = _dialogs.Prompt("Nom du profil :", "ViiCord — Nouveau profil", "Mon profil")?.Trim();
             if (string.IsNullOrWhiteSpace(name)) return;
             if (string.Equals(name, LibraryService.BuiltinProfileName, StringComparison.OrdinalIgnoreCase))
             {
-                _dialogs.Error("Ce nom est réservé au profil intégré de VERIS MOD. Choisis un autre nom.", "VERIS MOD — profil");
+                _dialogs.Error("Ce nom est réservé au profil intégré de ViiCord. Choisis un autre nom.", "ViiCord — profil");
                 return;
             }
 
@@ -1407,7 +1408,7 @@ public sealed class MainViewModel : ObservableObject
             ReloadProfiles();
             SelectedProfile = Profiles.FirstOrDefault(p => p.Name == name) ?? SelectedProfile;
         }
-        catch (Exception ex) { _dialogs.Error(ex.Message, "VERIS MOD — profil"); }
+        catch (Exception ex) { _dialogs.Error(ex.Message, "ViiCord — profil"); }
     }
 
     private void DeleteProfile()
@@ -1419,14 +1420,14 @@ public sealed class MainViewModel : ObservableObject
             ShowToast("Le profil « " + profile.Name + " » est intégré : il ne peut pas être supprimé.");
             return;
         }
-        if (!_dialogs.Confirm($"Supprimer le profil « {profile.Name} » ?", "VERIS MOD — Profils")) return;
+        if (!_dialogs.Confirm($"Supprimer le profil « {profile.Name} » ?", "ViiCord — Profils")) return;
 
         try
         {
             ProfileService.Delete(profile.Name);
             ReloadProfiles();
         }
-        catch (Exception ex) { _dialogs.Error(ex.Message, "VERIS MOD — profil"); }
+        catch (Exception ex) { _dialogs.Error(ex.Message, "ViiCord — profil"); }
     }
 
     private async void AfterConfigChange()
@@ -1438,7 +1439,7 @@ public sealed class MainViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            _dialogs.Error(ex.Message, "VERIS MOD — analyse");
+            _dialogs.Error(ex.Message, "ViiCord — analyse");
         }
     }
 

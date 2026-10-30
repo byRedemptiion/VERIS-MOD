@@ -8,13 +8,13 @@ using System.Diagnostics;
 using System.Reflection;
 using System.Text;
 using System.Text.RegularExpressions;
-using Audely.Models;
+using ViiCord.Models;
 
-namespace Audely.Services;
+namespace ViiCord.Services;
 
 /// <summary>
 /// Installation / restauration des hooks dans Discord (core + overlay).
-/// Port fidèle de Install-AudelyHook, Install-AudelyOverlayHook, Restore-* de la V1.3.7 :
+/// Port fidèle des scripts PowerShell d'installation et de restauration du hook (core, overlay) de la V1.3.7 :
 ///  - jamais d'écriture sans sauvegarde originale vérifiée par SHA-256 ;
 ///  - vérification après écriture, restauration immédiate de l'original en cas d'échec ;
 ///  - restauration refusée si le fichier Discord a changé depuis l'installation ;
@@ -27,6 +27,7 @@ public static class HookService
 
     private const string OverlayNeedle = "preload: require.resolve('./overlayPreload'),";
 
+    // Legacy Audely compatibility : le nom du script est écrit dans le hook déjà posé dans Discord.
     public static string LoaderPath => Path.Combine(AppPaths.DataDir, "audely_runtime_loader.js");
 
     // ---------------------------------------------------------------- état
@@ -57,13 +58,13 @@ public static class HookService
 
     public static string WriteRuntimeLoader()
     {
-        string text = ReadEmbedded("Audely.Js.audely_runtime_loader.js");
+        string text = ReadEmbedded("ViiCord.Js.audely_runtime_loader.js");
         File.WriteAllText(LoaderPath, text, Utf8NoBom);
         return LoaderPath;
     }
 
     /// <summary>
-    /// Met à jour le script déjà installé (dans le dossier de VERIS MOD, pas dans Discord) quand l'application
+    /// Met à jour le script déjà installé (dans le dossier de ViiCord, pas dans Discord) quand l'application
     /// en apporte une version plus récente. Retourne vrai s'il a changé : Discord doit alors être relancé.
     /// </summary>
     public static bool RefreshLoaderIfStale()
@@ -71,7 +72,7 @@ public static class HookService
         try
         {
             if (!File.Exists(LoaderPath)) return false;          // jamais installé : rien à mettre à jour
-            string fresh = ReadEmbedded("Audely.Js.audely_runtime_loader.js");
+            string fresh = ReadEmbedded("ViiCord.Js.audely_runtime_loader.js");
             string current = File.ReadAllText(LoaderPath, Utf8NoBom);
             if (string.Equals(current, fresh, StringComparison.Ordinal)) return false;
             File.WriteAllText(LoaderPath, fresh, Utf8NoBom);
@@ -82,9 +83,9 @@ public static class HookService
 
     private static string WriteOverlayPreload(OverlayInfo overlay)
     {
-        string text = ReadEmbedded("Audely.Js.audely_overlay_preload.js");
-        File.WriteAllText(overlay.AudelyPreloadPath, text, Utf8NoBom);
-        return overlay.AudelyPreloadPath;
+        string text = ReadEmbedded("ViiCord.Js.audely_overlay_preload.js");
+        File.WriteAllText(overlay.BridgePreloadPath, text, Utf8NoBom);
+        return overlay.BridgePreloadPath;
     }
 
     // ---------------------------------------------------------------- sauvegarde core
@@ -130,7 +131,7 @@ public static class HookService
         if (!File.Exists(core.IndexPath))
             throw new InvalidOperationException("discord_desktop_core introuvable.");
 
-        RequireDiscordClosed("Discord est encore lancé. Quitte-le complètement avant d'appliquer VERIS MOD.");
+        RequireDiscordClosed("Discord est encore lancé. Quitte-le complètement avant d'appliquer ViiCord.");
 
         string current = File.ReadAllText(core.IndexPath);
 
@@ -139,7 +140,7 @@ public static class HookService
             BackupCheck check = DiscordService.CheckCoreBackup(core);
             if (!check.Valid)
                 throw new InvalidOperationException(
-                    $"Hook VERIS MOD présent mais sauvegarde invalide ({check.Reason}). Écriture refusée.");
+                    $"Hook ViiCord présent mais sauvegarde invalide ({check.Reason}). Écriture refusée.");
 
             WriteRuntimeLoader();
             return;
@@ -147,7 +148,7 @@ public static class HookService
 
         string? external = DiscordService.FindExternalMod(core);
         if (external != null)
-            throw new InvalidOperationException(external + ". VERIS MOD refuse l'injection pour éviter un conflit.");
+            throw new InvalidOperationException(external + ". ViiCord refuse l'injection pour éviter un conflit.");
 
         string originalHash = Hashing.Sha256File(core.IndexPath);
         BackupResult backup = CreateCoreBackup(core, originalHash);
@@ -170,7 +171,7 @@ public static class HookService
         string loaderLiteral = System.Text.Json.JsonSerializer.Serialize(loaderPath);
         string prefix =
             "// AUDELY_RUNTIME_HOOK_BEGIN\r\n" +
-            "try { require(" + loaderLiteral + "); } catch (e) { console.error(\"[VERIS MOD] loader failed\", e); }\r\n" +
+            "try { require(" + loaderLiteral + "); } catch (e) { console.error(\"[ViiCord] loader failed\", e); }\r\n" +
             "// AUDELY_RUNTIME_HOOK_END";
 
         string patched = prefix + "\r\n" + current;
@@ -203,7 +204,7 @@ public static class HookService
             !Hashing.SameHash(currentHash, state.PatchedSha256))
         {
             throw new InvalidOperationException(
-                "Le fichier Discord a changé depuis l'installation VERIS MOD. " +
+                "Le fichier Discord a changé depuis l'installation ViiCord. " +
                 "Restauration automatique refusée pour éviter d'écraser une autre modification.");
         }
 
@@ -223,7 +224,7 @@ public static class HookService
     {
         InstallState? state = ReadState();
         if (state == null || string.IsNullOrWhiteSpace(state.BackupPath))
-            throw new InvalidOperationException("État VERIS MOD core absent : sauvegarde overlay refusée.");
+            throw new InvalidOperationException("État ViiCord core absent : sauvegarde overlay refusée.");
 
         string dir = Path.GetDirectoryName(state.BackupPath)!;
         Directory.CreateDirectory(dir);
@@ -241,7 +242,7 @@ public static class HookService
         return new OverlayBackupResult(backupPath, originalHash);
     }
 
-    /// <summary>Retourne false si ce build de Discord n'a pas d'overlay (VERIS MOD reste utilisable).</summary>
+    /// <summary>Retourne false si ce build de Discord n'a pas d'overlay (ViiCord reste utilisable).</summary>
     public static bool InstallOverlay(DiscordCoreInfo core)
     {
         RequireDiscordClosed("Discord est encore lancé. Ferme-le complètement avant d'installer le bridge Overlay.");
@@ -302,7 +303,7 @@ public static class HookService
         {
             File.WriteAllBytes(overlay.HostPath, File.ReadAllBytes(backup.BackupPath));
             TryDelete(preloadPath);
-            throw new InvalidOperationException("État VERIS MOD absent après installation core. Overlay restauré.");
+            throw new InvalidOperationException("État ViiCord absent après installation core. Overlay restauré.");
         }
 
         state.OverlayHostPath = overlay.HostPath;
@@ -326,13 +327,13 @@ public static class HookService
             // Supprime un wrapper orphelin uniquement si l'état prouve qu'il nous appartient.
             InstallState? orphan = ReadState();
             if (orphan != null &&
-                string.Equals(orphan.OverlayPreloadPath, info.AudelyPreloadPath, StringComparison.OrdinalIgnoreCase) &&
-                File.Exists(info.AudelyPreloadPath))
+                string.Equals(orphan.OverlayPreloadPath, info.BridgePreloadPath, StringComparison.OrdinalIgnoreCase) &&
+                File.Exists(info.BridgePreloadPath))
             {
                 try
                 {
-                    if (Hashing.SameHash(Hashing.Sha256File(info.AudelyPreloadPath), orphan.OverlayPreloadSha256))
-                        File.Delete(info.AudelyPreloadPath);
+                    if (Hashing.SameHash(Hashing.Sha256File(info.BridgePreloadPath), orphan.OverlayPreloadSha256))
+                        File.Delete(info.BridgePreloadPath);
                 }
                 catch { }
             }
@@ -352,23 +353,23 @@ public static class HookService
             !Hashing.SameHash(currentHash, state.OverlayPatchedSha256))
         {
             throw new InvalidOperationException(
-                "discord_overlay2\\host.js a changé depuis VERIS MOD. Restauration automatique refusée.");
+                "discord_overlay2\\host.js a changé depuis ViiCord. Restauration automatique refusée.");
         }
 
         File.WriteAllBytes(info.HostPath, File.ReadAllBytes(state.OverlayBackupPath));
         if (!Hashing.SameHash(Hashing.Sha256File(info.HostPath), state.OverlayOriginalSha256))
             throw new InvalidOperationException("SHA-256 incorrect après restauration de l'Overlay.");
 
-        if (File.Exists(info.AudelyPreloadPath))
+        if (File.Exists(info.BridgePreloadPath))
         {
             bool canDelete = false;
             try
             {
                 canDelete = string.IsNullOrWhiteSpace(state.OverlayPreloadSha256) ||
-                            Hashing.SameHash(Hashing.Sha256File(info.AudelyPreloadPath), state.OverlayPreloadSha256);
+                            Hashing.SameHash(Hashing.Sha256File(info.BridgePreloadPath), state.OverlayPreloadSha256);
             }
             catch { }
-            if (canDelete) TryDelete(info.AudelyPreloadPath);
+            if (canDelete) TryDelete(info.BridgePreloadPath);
         }
     }
 
@@ -393,7 +394,7 @@ public static class HookService
 
     private static void WriteReplacing(string path, string content)
     {
-        string tmp = path + ".audely.tmp";
+        string tmp = path + ".viicord.tmp";
         try
         {
             File.WriteAllText(tmp, content, Utf8NoBom);
@@ -411,7 +412,7 @@ public static class HookService
     }
 }
 
-/// <summary>Ferme Discord proprement avant une écriture, puis le relance si c'est VERIS MOD qui l'a fermé.</summary>
+/// <summary>Ferme Discord proprement avant une écriture, puis le relance si c'est ViiCord qui l'a fermé.</summary>
 public static class DiscordLifecycle
 {
     private static readonly string[] ProcessNames = { "Discord", "DiscordCanary", "DiscordPTB" };

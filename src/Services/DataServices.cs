@@ -4,9 +4,9 @@ using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Audely.Models;
+using ViiCord.Models;
 
-namespace Audely.Services;
+namespace ViiCord.Services;
 
 public static class AudioFiles
 {
@@ -63,7 +63,7 @@ public static class NeedleBook
         }
     }
 
-    /// <summary>Charge discovered-aliases.json (équivalent d'Import-AudelyDiscoveredAliases).</summary>
+    /// <summary>Charge discovered-aliases.json (ancien script PowerShell).</summary>
     public static void ImportDiscovered()
     {
         AliasesFile? data = JsonStore.TryRead<AliasesFile>(AppPaths.AliasesPath);
@@ -79,7 +79,7 @@ public static class ConfigService
         try { return JsonStore.ReadOrNull<RuntimeConfig>(AppPaths.ConfigPath) ?? new RuntimeConfig(); }
         catch (Exception ex)
         {
-            throw new InvalidOperationException("Configuration VERIS MOD illisible : " + ex.Message);
+            throw new InvalidOperationException("Configuration ViiCord illisible : " + ex.Message);
         }
     }
 
@@ -101,11 +101,11 @@ public static class ConfigService
         JsonStore.Write(AppPaths.SettingsPath, settings);
     }
 
-    /// <summary>Copie le son dans %APPDATA%\Audely\sounds puis enregistre la cible.</summary>
+    /// <summary>Copie le son dans %APPDATA%\ViiCord\sounds puis enregistre la cible.</summary>
     public static void SetTarget(string targetId, SoundItem sound, int volume)
     {
         EventDef def = EventCatalog.Find(targetId)
-            ?? throw new InvalidOperationException("Cible VERIS MOD inconnue : " + targetId);
+            ?? throw new InvalidOperationException("Cible ViiCord inconnue : " + targetId);
 
         AudioFiles.Validate(sound.Path);
         volume = Math.Clamp(volume, 0, 100);
@@ -227,7 +227,7 @@ public static class ConfigService
         Save(cfg);
     }
 
-    /// <summary>Met à jour les needles des cibles configurées (Sync-AudelyConfiguredNeedles).</summary>
+    /// <summary>Met à jour les needles des cibles configurées (ancien script PowerShell).</summary>
     public static void SyncNeedles()
     {
         RuntimeConfig cfg = Read();
@@ -243,7 +243,7 @@ public static class ConfigService
 
     /// <summary>
     /// Recopie les sons configurés dont la copie est absente ou altérée
-    /// (Repair-AudelyConfiguredFiles). Retourne true si quelque chose a changé.
+    /// (ancien script PowerShell). Retourne true si quelque chose a changé.
     /// </summary>
     public static bool RepairConfiguredFiles(IReadOnlyList<SoundItem> sounds)
     {
@@ -291,23 +291,23 @@ public static class ConfigService
 
 public static class LibraryService
 {
-    // Voix V.E.R.I.S : une phrase par catégorie (le 4e champ est la catégorie, donc la carte, où elle apparaît).
+    // Voix VIIRUS : une phrase par catégorie (le 4e champ est la catégorie, donc la carte, où elle apparaît).
     private static readonly (string Id, string Name, string File, string Category)[] Builtins =
     {
-        ("builtin:veris_message",   "Voix V.E.R.I.S • Nouveau message",     "Veris_Message.wav",      "message1"),
-        ("builtin:veris_join",      "Voix V.E.R.I.S • Utilisateur rejoint", "Veris_Rejoint.wav",      "user_join"),
-        ("builtin:veris_leave",     "Voix V.E.R.I.S • Utilisateur parti",   "Veris_Parti.wav",        "user_leave"),
-        ("builtin:veris_calling",   "Voix V.E.R.I.S • Appel en cours",      "Veris_Appel_Sortant.wav","call_calling"),
-        ("builtin:veris_ringing",   "Voix V.E.R.I.S • Appel entrant",       "Veris_Appel_Entrant.wav","call_ringing"),
-        ("builtin:veris_reconnect", "Voix V.E.R.I.S • Connexion en cours",  "Veris_Connexion.wav",    "reconnect"),
-        ("builtin:veris_disconnect","Voix V.E.R.I.S • Déconnexion",         "Veris_Deconnexion.wav",  "disconnect"),
-        ("builtin:veris_mute",      "Voix V.E.R.I.S • Micro coupé",         "Veris_Micro_Coupe.wav",  "mute"),
-        ("builtin:veris_unmute",    "Voix V.E.R.I.S • Micro démuté",        "Veris_Micro_Active.wav", "unmute"),
-        ("builtin:veris_deafen",    "Voix V.E.R.I.S • Casque coupé",        "Veris_Casque_Coupe.wav", "deafen"),
-        ("builtin:veris_undeafen",  "Voix V.E.R.I.S • Son rétabli",         "Veris_Casque_Active.wav","undeafen"),
+        ("builtin:veris_message",   "Voix VIIRUS • Nouveau message",     "Viirus_Message.wav",      "message1"),
+        ("builtin:veris_join",      "Voix VIIRUS • Utilisateur rejoint", "Viirus_Rejoint.wav",      "user_join"),
+        ("builtin:veris_leave",     "Voix VIIRUS • Utilisateur parti",   "Viirus_Parti.wav",        "user_leave"),
+        ("builtin:veris_calling",   "Voix VIIRUS • Appel en cours",      "Viirus_Appel_Sortant.wav","call_calling"),
+        ("builtin:veris_ringing",   "Voix VIIRUS • Appel entrant",       "Viirus_Appel_Entrant.wav","call_ringing"),
+        ("builtin:veris_reconnect", "Voix VIIRUS • Connexion en cours",  "Viirus_Connexion.wav",    "reconnect"),
+        ("builtin:veris_disconnect","Voix VIIRUS • Déconnexion",         "Viirus_Deconnexion.wav",  "disconnect"),
+        ("builtin:veris_mute",      "Voix VIIRUS • Micro coupé",         "Viirus_Micro_Coupe.wav",  "mute"),
+        ("builtin:veris_unmute",    "Voix VIIRUS • Micro démuté",        "Viirus_Micro_Active.wav", "unmute"),
+        ("builtin:veris_deafen",    "Voix VIIRUS • Casque coupé",        "Viirus_Casque_Coupe.wav", "deafen"),
+        ("builtin:veris_undeafen",  "Voix VIIRUS • Son rétabli",         "Viirus_Casque_Active.wav","undeafen"),
     };
 
-    /// <summary>Le profil « Voix VERIS » : les 11 phrases du robot, une par événement.</summary>
+    /// <summary>Le profil « Voix VIIRUS » : les 11 phrases du robot, une par événement.</summary>
     public static Profile BuiltinProfile()
     {
         var profile = new Profile { Name = BuiltinProfileName, IsBuiltin = true };
@@ -316,7 +316,7 @@ public static class LibraryService
         return profile;
     }
 
-    public const string BuiltinProfileName = "Voix VERIS";
+    public const string BuiltinProfileName = "Voix VIIRUS";
 
     public static LibraryFile Read() =>
         JsonStore.TryRead<LibraryFile>(AppPaths.LibraryPath) ?? new LibraryFile();
@@ -466,7 +466,7 @@ public static class ProfileService
     {
         RuntimeConfig cfg = ConfigService.Read();
         if (cfg.Targets.Count == 0)
-            throw new InvalidOperationException("Aucun son VERIS MOD n'est configuré actuellement.");
+            throw new InvalidOperationException("Aucun son ViiCord n'est configuré actuellement.");
 
         ProfilesFile file = Read();
         file.Profiles.RemoveAll(p => string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase));

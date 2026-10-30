@@ -7,10 +7,10 @@ using System.Threading.Tasks;
 using System.Collections.ObjectModel;
 using System.Windows.Input;
 using System.Windows.Media;
-using Audely.Models;
-using Audely.Services;
+using ViiCord.Models;
+using ViiCord.Services;
 
-namespace Audely.ViewModels;
+namespace ViiCord.ViewModels;
 
 /// <summary>Un choix du menu d'une carte : un son + son état de favori (★) dans cette catégorie.</summary>
 public sealed class SoundOption : ObservableObject
@@ -65,7 +65,7 @@ public sealed class EventCardViewModel : ObservableObject
     public Brush IconFg { get; }
     public Geometry IconGeometry { get; }
 
-    /// <summary>Les sons de CETTE catégorie : la voix V.E.R.I.S, les sons ajoutés ici, et les anciens sons communs.</summary>
+    /// <summary>Les sons de CETTE catégorie : la voix VIIRUS, les sons ajoutés ici, et les anciens sons communs.</summary>
     public ObservableCollection<SoundOption> Options { get; } = new();
 
     public SoundOption? SelectedOption

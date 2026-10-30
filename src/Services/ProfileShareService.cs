@@ -6,19 +6,30 @@ using System.Linq;
 using System.Text;
 using System.Text.Json;
 using System.Text.RegularExpressions;
-using Audely.Models;
+using ViiCord.Models;
 
-namespace Audely.Services;
+namespace ViiCord.Services;
 
 /// <summary>
-/// Partage de profils : un fichier « .veris » (archive zip) contient profile.json + les sons perso utilisés.
+/// Partage de profils : un fichier « .viicord » (archive zip) contient profile.json + les sons perso utilisés.
 /// L'import est « tout ou rien » : tout est lu et vérifié dans un dossier temporaire avant la moindre
 /// écriture dans la bibliothèque. Aucun nom de fichier de l'archive n'est jamais utilisé comme chemin.
 /// </summary>
 public static class ProfileShareService
 {
-    public const string Extension = ".veris";
-    public const string FormatName = "veris-profile";
+    public const string Extension = ".viicord";
+    public const string FormatName = "viicord-profile";
+
+    // Legacy VERIS compatibility : les profils exportés avant le renommage (version 1.9.x) restent importables.
+    public const string LegacyExtension = ".veris";
+    private const string LegacyFormatName = "veris-profile";
+
+    public static bool IsProfileFile(string path)
+    {
+        string ext = Path.GetExtension(path);
+        return string.Equals(ext, Extension, StringComparison.OrdinalIgnoreCase) ||
+               string.Equals(ext, LegacyExtension, StringComparison.OrdinalIgnoreCase);
+    }
     public const int FormatVersion = 1;
 
     private const int MaxEntries = 40;                       // profile.json + 11 sons au plus
@@ -51,7 +62,7 @@ public static class ProfileShareService
         public string Id { get; set; } = "";
         public int Volume { get; set; } = 100;
         public string SoundName { get; set; } = "";
-        public string? BuiltinId { get; set; }     // son intégré à VERIS MOD (rien à embarquer)
+        public string? BuiltinId { get; set; }     // son intégré à ViiCord (rien à embarquer)
         public string? File { get; set; }          // « sounds/xxx.ext » dans l'archive
     }
 
@@ -59,7 +70,7 @@ public static class ProfileShareService
 
     public sealed record ExportResult(int Targets, int Sounds, int Skipped);
 
-    /// <summary>Écrit le profil dans un fichier .veris. Les sons introuvables sont ignorés (comptés dans Skipped).</summary>
+    /// <summary>Écrit le profil dans un fichier .viicord. Les sons introuvables sont ignorés (comptés dans Skipped).</summary>
     public static ExportResult Export(Profile profile, IReadOnlyList<SoundItem> available, string destinationPath)
     {
         var package = new PackageFile
@@ -149,7 +160,7 @@ public static class ProfileShareService
 
     // ------------------------------------------------------------------ import
 
-    /// <summary>Contenu d'un fichier .veris déjà lu et vérifié, en attente de confirmation.</summary>
+    /// <summary>Contenu d'un fichier .viicord déjà lu et vérifié, en attente de confirmation.</summary>
     public sealed class ImportPlan : IDisposable
     {
         internal ImportPlan(string name, string tempDir, List<PlannedTarget> targets)
@@ -174,14 +185,14 @@ public static class ProfileShareService
 
     internal sealed record PlannedTarget(string Id, int Volume, string SoundName, string? BuiltinId, string? TempFile);
 
-    /// <summary>Lit et vérifie un fichier .veris. Lève InvalidOperationException (message lisible) s'il est invalide.</summary>
+    /// <summary>Lit et vérifie un fichier .viicord. Lève InvalidOperationException (message lisible) s'il est invalide.</summary>
     public static ImportPlan ReadPackage(string path, IReadOnlyList<SoundItem> available)
     {
         if (!File.Exists(path)) throw new InvalidOperationException("Fichier introuvable.");
         if (new FileInfo(path).Length > MaxTotalBytes)
-            throw new InvalidOperationException("Ce fichier est trop volumineux pour être un profil VERIS MOD.");
+            throw new InvalidOperationException("Ce fichier est trop volumineux pour être un profil ViiCord.");
 
-        string tempDir = Path.Combine(Path.GetTempPath(), "VerisMod_import_" + Guid.NewGuid().ToString("N"));
+        string tempDir = Path.Combine(Path.GetTempPath(), "ViiCord_import_" + Guid.NewGuid().ToString("N"));
         Directory.CreateDirectory(tempDir);
 
         try
@@ -189,12 +200,12 @@ public static class ProfileShareService
             using FileStream fs = File.OpenRead(path);
             ZipArchive zip;
             try { zip = new ZipArchive(fs, ZipArchiveMode.Read); }
-            catch (InvalidDataException) { throw new InvalidOperationException("Ce fichier n'est pas un profil VERIS MOD valide."); }
+            catch (InvalidDataException) { throw new InvalidOperationException("Ce fichier n'est pas un profil ViiCord valide."); }
 
             using (zip)
             {
                 if (zip.Entries.Count == 0 || zip.Entries.Count > MaxEntries)
-                    throw new InvalidOperationException("Ce fichier n'est pas un profil VERIS MOD valide.");
+                    throw new InvalidOperationException("Ce fichier n'est pas un profil ViiCord valide.");
 
                 long declared = 0;
                 foreach (ZipArchiveEntry e in zip.Entries) declared += e.Length;
@@ -203,7 +214,7 @@ public static class ProfileShareService
 
                 ZipArchiveEntry? metaEntry = zip.Entries.FirstOrDefault(e => e.FullName == "profile.json");
                 if (metaEntry == null || metaEntry.Length > MaxProfileJsonBytes)
-                    throw new InvalidOperationException("Ce fichier n'est pas un profil VERIS MOD valide.");
+                    throw new InvalidOperationException("Ce fichier n'est pas un profil ViiCord valide.");
 
                 PackageFile? meta;
                 try
@@ -213,10 +224,10 @@ public static class ProfileShareService
                 }
                 catch (JsonException) { throw new InvalidOperationException("Le descriptif du profil est illisible."); }
 
-                if (meta == null || meta.Format != FormatName)
-                    throw new InvalidOperationException("Ce fichier n'est pas un profil VERIS MOD.");
+                if (meta == null || meta.Format != FormatName && meta.Format != LegacyFormatName)
+                    throw new InvalidOperationException("Ce fichier n'est pas un profil ViiCord.");
                 if (meta.Version > FormatVersion)
-                    throw new InvalidOperationException("Ce profil vient d'une version plus récente de VERIS MOD. Mets l'application à jour.");
+                    throw new InvalidOperationException("Ce profil vient d'une version plus récente de ViiCord. Mets l'application à jour.");
 
                 var planned = new List<PlannedTarget>();
                 var extracted = new Dictionary<string, string>(StringComparer.Ordinal);   // entrée → fichier temporaire
@@ -233,7 +244,7 @@ public static class ProfileShareService
 
                     if (!string.IsNullOrEmpty(t.BuiltinId))
                     {
-                        // Son intégré : doit exister dans CETTE version de VERIS MOD.
+                        // Son intégré : doit exister dans CETTE version de ViiCord.
                         SoundItem? builtin = available.FirstOrDefault(s => s.Kind == SoundKind.Builtin && s.Id == t.BuiltinId);
                         if (builtin == null) continue;
                         planned.Add(new PlannedTarget(t.Id, volume, builtin.Name, builtin.Id, null));

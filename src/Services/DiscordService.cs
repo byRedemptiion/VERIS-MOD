@@ -5,9 +5,9 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Text.RegularExpressions;
-using Audely.Models;
+using ViiCord.Models;
 
-namespace Audely.Services;
+namespace ViiCord.Services;
 
 /// <summary>
 /// Détection de Discord et état des hooks. PHASE 1 : lecture seule —
@@ -15,6 +15,8 @@ namespace Audely.Services;
 /// </summary>
 public static class DiscordService
 {
+    // Legacy Audely compatibility : ces marqueurs sont déjà écrits dans les fichiers de Discord des installations
+    // existantes ; les changer empêcherait de reconnaître (et de retirer) un hook déjà posé.
     public const string HookMarker = "AUDELY_RUNTIME_HOOK_BEGIN";
     public const string OverlayMarker = "AUDELY_OVERLAY_BRIDGE_V1";
 
@@ -108,10 +110,10 @@ public static class DiscordService
             string moduleDir = Path.Combine(wrapper.FullName, "discord_overlay2");
             string host = Path.Combine(moduleDir, "host.js");
             string original = Path.Combine(moduleDir, "overlayPreload.js");
-            string audely = Path.Combine(moduleDir, "audely_overlay_preload.js");
+            string preload = Path.Combine(moduleDir, "audely_overlay_preload.js");
 
             if (File.Exists(host) && File.Exists(original))
-                return new OverlayInfo(wrapper.FullName, moduleDir, host, original, audely);
+                return new OverlayInfo(wrapper.FullName, moduleDir, host, original, preload);
         }
         return null;
     }
@@ -151,7 +153,7 @@ public static class DiscordService
         InstallState? state = JsonStore.TryRead<InstallState>(AppPaths.StatePath);
         if (state == null) return new(false, "install-state.json absent");
         if (!string.Equals(state.IndexPath, core.IndexPath, StringComparison.OrdinalIgnoreCase))
-            return new(false, "état VERIS MOD lié à une autre version Discord");
+            return new(false, "état ViiCord lié à une autre version Discord");
         if (string.IsNullOrWhiteSpace(state.BackupPath) || !File.Exists(state.BackupPath))
             return new(false, "sauvegarde originale absente");
 
