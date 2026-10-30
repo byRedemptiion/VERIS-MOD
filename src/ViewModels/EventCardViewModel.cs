@@ -139,6 +139,7 @@ public sealed class EventCardViewModel : ObservableObject
     public ICommand? RestoreCommand { get; set; }
     public ICommand? AddSoundCommand { get; set; }
     public ICommand? ToggleFavoriteCommand { get; set; }
+    public ICommand? RandomCommand { get; set; }
 
     private static Brush Frozen(string hex, byte alpha = 0xFF)
     {

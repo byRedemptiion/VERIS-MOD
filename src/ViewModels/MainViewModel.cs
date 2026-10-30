@@ -583,6 +583,7 @@ public sealed class MainViewModel : ObservableObject
         card.ToggleFavoriteCommand = new RelayCommand(() => ToggleFavorite(card), () => card.SelectedSound != null);
         card.TestCommand = new RelayCommand(() => TestSound(card), () => card.SelectedSound != null);
         card.ApplyCommand = new AsyncRelayCommand(() => ApplyCardAsync(card), () => CanApplyAnything && card.SelectedSound != null && !IsBusy, OnError);
+        card.RandomCommand = new AsyncRelayCommand(() => RandomizeCardAsync(card), () => CanApplyAnything && card.Options.Count > 0 && !IsBusy, OnError);
         card.RestoreCommand = new RelayCommand(() => RestoreCard(card), () => _snapshot.Core != null && card.IsConfigured && _configOk && !IsBusy);
         return card;
     }
@@ -928,6 +929,25 @@ public sealed class MainViewModel : ObservableObject
             ConfigService.SetTarget(id, sound, volume);
             ClearPausedFlag();
         });
+    }
+
+    /// <summary>Aléatoire d'une seule catégorie : un favori ★ (sinon n'importe quel son de la catégorie), appliqué tout de suite.</summary>
+    private async Task RandomizeCardAsync(EventCardViewModel card)
+    {
+        List<SoundOption> pool = card.Options.Where(o => o.IsFavorite).ToList();
+        string source = "parmi tes favoris";
+        if (pool.Count == 0)
+        {
+            pool = card.Options.ToList();
+            source = "parmi les sons de la catégorie";
+        }
+        if (pool.Count > 1) pool = pool.Where(o => o != card.SelectedOption).ToList();
+        if (pool.Count == 0) return;
+
+        SoundOption pick = pool[new Random().Next(pool.Count)];
+        card.SelectedSound = pick.Sound;
+        await ApplyCardAsync(card);
+        ShowToast($"Aléatoire : « {pick.Sound.Name} » ({source}).");
     }
 
     private async Task ApplyAllAsync()

@@ -601,6 +601,10 @@
                             </TextBlock.Style>
                           </TextBlock>
                         </Button>
+                        <Button Content="🎲 Aléatoire" Style="{StaticResource CompactButtonStyle}"
+                                Height="40" Margin="0,0,8,8" Padding="14,5" FontSize="13"
+                                Command="{Binding RandomCommand}"
+                                ToolTip="Tire au sort un de tes favoris ★ pour cet événement (sinon n'importe quel son de la catégorie) et l'applique."/>
                         <Button Content="+ Ajouter un son" Style="{StaticResource CompactButtonStyle}"
                                 Height="40" Margin="0,0,8,8" Padding="14,5" FontSize="13"
                                 Command="{Binding AddSoundCommand}"

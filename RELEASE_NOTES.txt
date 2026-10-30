@@ -1,1 +1,1 @@
-Nouvelle interface « pocket » : une grande carte au centre, on tourne les catégories avec les flèches, en glissant, avec ← → ou la molette. « Aléatoire » devient une page du carrousel. Partage de profils : boutons Exporter / Importer (fichier .veris, glisser-déposable sur la fenêtre).
+Bouton « 🎲 Aléatoire » sur chaque page : tire au sort un favori ★ (ou un son de la catégorie) pour cet événement et l'applique.
