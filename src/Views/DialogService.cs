@@ -62,6 +62,31 @@ public sealed class DialogService : IDialogService
         return dlg.ShowDialog(_owner) == true ? dlg.FileName : null;
     }
 
+    public string? PickSaveProfileFile(string suggestedName)
+    {
+        var dlg = new SaveFileDialog
+        {
+            Title = "Exporter le profil",
+            FileName = suggestedName,
+            Filter = "Profil VERIS MOD (*.veris)|*.veris",
+            DefaultExt = ".veris",
+            AddExtension = true,
+            OverwritePrompt = true,
+        };
+        return dlg.ShowDialog(_owner) == true ? dlg.FileName : null;
+    }
+
+    public string? PickOpenProfileFile()
+    {
+        var dlg = new OpenFileDialog
+        {
+            Title = "Importer un profil",
+            Filter = "Profil VERIS MOD (*.veris)|*.veris|Tous les fichiers|*.*",
+            CheckFileExists = true,
+        };
+        return dlg.ShowDialog(_owner) == true ? dlg.FileName : null;
+    }
+
     public void ShowDiagnostic()
     {
         if (_vm == null) return;

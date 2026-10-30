@@ -20,6 +20,8 @@ public interface IDialogService
     string? Prompt(string message, string title, string defaultValue);
     string? PickAudioFile();
     string? PickSaveTextFile(string suggestedName);
+    string? PickSaveProfileFile(string suggestedName);
+    string? PickOpenProfileFile();
     void ShowDiagnostic();
     void ShowAbout();
     void ShowLibrary();
@@ -76,6 +78,7 @@ public sealed class MainViewModel : ObservableObject
         foreach (string id in EventCatalog.CardOrder)
             Cards.Add(CreateCard(EventCatalog.Find(id)!));
         Featured = CreateCard(EventCatalog.Find(EventCatalog.FeaturedId)!);
+        BuildTabs();
 
         ScanCommand = new AsyncRelayCommand(ScanAsync, onError: OnError);
         DetectAliasesCommand = new AsyncRelayCommand(DetectAliasesAsync, () => _snapshot.Core != null, OnError);
@@ -103,6 +106,11 @@ public sealed class MainViewModel : ObservableObject
         PickPresetColorCommand = new RelayCommand(p => { if (p is string hex) CustomHex = hex; });
         FinishOnboardingCommand = new RelayCommand(FinishOnboarding);
         ApplyVerisVoiceCommand = new AsyncRelayCommand(ApplyVerisVoiceAsync, () => CanApplyAnything && !IsBusy, OnError);
+        NextPageCommand = new RelayCommand(() => Navigate(+1));
+        PreviousPageCommand = new RelayCommand(() => Navigate(-1));
+        GoToPageCommand = new RelayCommand(p => { if (p is int i) GoToPage(i); });
+        ExportProfileCommand = new RelayCommand(ExportProfile, () => SelectedProfile != null);
+        ImportProfileCommand = new RelayCommand(ImportProfileFromDialog);
         _preview.Ended += () => IsPlaying = false;
 
         foreach (ThemePalette palette in ThemeService.All)
@@ -406,6 +414,11 @@ public sealed class MainViewModel : ObservableObject
     public ICommand PickPresetColorCommand { get; }
     public ICommand FinishOnboardingCommand { get; }
     public ICommand ApplyVerisVoiceCommand { get; }
+    public ICommand NextPageCommand { get; }
+    public ICommand PreviousPageCommand { get; }
+    public ICommand GoToPageCommand { get; }
+    public ICommand ExportProfileCommand { get; }
+    public ICommand ImportProfileCommand { get; }
 
     private bool CanApplyAnything =>
         _snapshot.Core != null && _snapshot.ExternalMod == null && _configOk;
@@ -416,6 +429,150 @@ public sealed class MainViewModel : ObservableObject
         (!_snapshot.HookInstalled || (_snapshot.Overlay != null && !_snapshot.OverlayHookInstalled));
 
     private bool CanActivate => CanApplyAnything && NeedsHookWork;
+
+    // ---------------------------------------------------------------- carrousel (une grande carte, on tourne les pages)
+
+    private static readonly Dictionary<string, string> TabTitles = new(StringComparer.Ordinal)
+    {
+        ["user_join"] = "Rejoint", ["user_leave"] = "Quitte", ["call_calling"] = "Appel sortant",
+        ["call_ringing"] = "Appel entrant", ["reconnect"] = "Connexion", ["disconnect"] = "Déconnexion",
+        ["mute"] = "Micro coupé", ["unmute"] = "Micro réactivé", ["deafen"] = "Sourdine",
+        ["undeafen"] = "Désourdine", ["message1"] = "Message",
+    };
+
+    private int _pageIndex;
+
+    public ObservableCollection<PageTab> Tabs { get; } = new();
+    public ObservableCollection<FavoriteInfo> FavoriteInfos { get; } = new();
+
+    /// <summary>Sens du dernier changement de page (+1 : vers la droite, −1 : vers la gauche) : sert à l'animation.</summary>
+    public int PageDirection { get; private set; } = 1;
+    public int PageIndex => _pageIndex;
+    public int PageCount => Tabs.Count;
+    public bool IsRandomPage => _pageIndex >= PageCount - 1;
+    public string PageCounter => $"{_pageIndex + 1} / {PageCount}";
+
+    /// <summary>Carte affichée. Sur la page « Aléatoire » : la dernière carte (masquée, jamais utilisée).</summary>
+    public EventCardViewModel CurrentCard => AllCards.ElementAt(Math.Min(_pageIndex, PageCount - 2));
+
+    private void BuildTabs()
+    {
+        int i = 0;
+        foreach (EventCardViewModel card in AllCards)
+            Tabs.Add(new PageTab(i++, TabTitles.TryGetValue(card.Id, out string? t) ? t : card.Title));
+        Tabs.Add(new PageTab(i, "Aléatoire"));
+        Tabs[0].IsActive = true;
+    }
+
+    private void Navigate(int step) => SetPage(_pageIndex + step, step >= 0 ? 1 : -1);
+
+    private void GoToPage(int index) => SetPage(index, index >= _pageIndex ? 1 : -1);
+
+    private void SetPage(int index, int direction)
+    {
+        int count = PageCount;
+        index = ((index % count) + count) % count;      // on boucle : après la dernière page, on revient à la première
+        if (index == _pageIndex) return;
+
+        Tabs[_pageIndex].IsActive = false;
+        _pageIndex = index;
+        Tabs[_pageIndex].IsActive = true;
+        PageDirection = direction;
+
+        OnPropertyChanged(nameof(PageDirection));
+        OnPropertyChanged(nameof(CurrentCard));
+        OnPropertyChanged(nameof(IsRandomPage));
+        OnPropertyChanged(nameof(PageCounter));
+        OnPropertyChanged(nameof(PageIndex));            // en dernier : l'animation lit les autres valeurs
+        CommandManager.InvalidateRequerySuggested();
+    }
+
+    /// <summary>Nombre de favoris ★ par catégorie : une catégorie est « prête » pour l'aléatoire auto à partir de 2.</summary>
+    private void RefreshFavoriteInfos()
+    {
+        FavoriteInfos.Clear();
+        foreach (EventCardViewModel card in AllCards)
+        {
+            int n = card.Options.Count(o => o.IsFavorite);
+            string title = TabTitles.TryGetValue(card.Id, out string? t) ? t : card.Title;
+            FavoriteInfos.Add(new FavoriteInfo($"★ {n} · {title}", n >= 2));
+        }
+        OnPropertyChanged(nameof(RandomSummary));
+    }
+
+    public string RandomSummary
+    {
+        get
+        {
+            int ready = FavoriteInfos.Count(f => f.IsReady);
+            return ready == 0
+                ? "Aucune catégorie prête : marque au moins 2 sons ★ dans une catégorie pour l'aléatoire auto."
+                : $"{ready} catégorie(s) sur {FavoriteInfos.Count} prête(s) pour l'aléatoire auto.";
+        }
+    }
+
+    // ---------------------------------------------------------------- partage de profils (.veris)
+
+    private void ExportProfile()
+    {
+        Profile? profile = SelectedProfile;
+        if (profile == null) return;
+        if (profile.IsBuiltin)
+        {
+            ShowToast("« " + profile.Name + " » est déjà intégré à VERIS MOD : choisis (ou sauve) un de tes profils pour l'exporter.");
+            return;
+        }
+
+        try
+        {
+            if (!_dialogs.Confirm(
+                    $"Exporter le profil « {profile.Name} » dans un fichier {ProfileShareService.Extension} ?\n\n" +
+                    "Le fichier contiendra les sons perso utilisés par ce profil. Ne le partage que si tu as le droit de diffuser ces sons.",
+                    "VERIS MOD — exporter un profil")) return;
+
+            string? path = _dialogs.PickSaveProfileFile(ProfileShareService.SafeFileStem(profile.Name) + ProfileShareService.Extension);
+            if (path == null) return;
+
+            var result = ProfileShareService.Export(profile, LibraryService.GetAvailable(), path);
+            string tail = result.Skipped > 0 ? $" ({result.Skipped} événement(s) ignoré(s) : son introuvable)" : "";
+            ShowToast($"Profil « {profile.Name} » exporté : {result.Targets} événement(s), {result.Sounds} son(s) perso{tail}.");
+        }
+        catch (Exception ex) { _dialogs.Error(ex.Message, "VERIS MOD — export refusé"); }
+    }
+
+    private void ImportProfileFromDialog()
+    {
+        string? path = _dialogs.PickOpenProfileFile();
+        if (path != null) ImportProfileFile(path);
+    }
+
+    /// <summary>Importe un fichier .veris (bouton Importer ou fichier glissé sur la fenêtre).</summary>
+    public void ImportProfileFile(string path)
+    {
+        try
+        {
+            using ProfileShareService.ImportPlan plan = ProfileShareService.ReadPackage(path, LibraryService.GetAvailable());
+
+            string name = plan.Name;
+            if (string.Equals(name, LibraryService.BuiltinProfileName, StringComparison.OrdinalIgnoreCase))
+                name += " (importé)";
+
+            bool exists = ProfileService.Read().Profiles.Any(p => string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase));
+            string message =
+                $"Importer le profil « {name} » ?\n\n" +
+                $"{plan.TargetCount} événement(s), {plan.SoundCount} son(s) perso à ajouter à ta bibliothèque.\n" +
+                (exists ? "\nUn profil du même nom existe déjà : il sera remplacé.\n" : "") +
+                "\nN'importe que des profils de personnes de confiance. Rien n'est appliqué à Discord tant que tu ne cliques pas sur « Charger ».";
+            if (!_dialogs.Confirm(message, "VERIS MOD — importer un profil")) return;
+
+            Profile saved = ProfileShareService.Commit(plan, name);
+            ReloadSounds();
+            ReloadProfiles();
+            SelectedProfile = Profiles.FirstOrDefault(p => p.Name == saved.Name) ?? SelectedProfile;
+            ShowToast($"Profil « {saved.Name} » importé. Clique sur « Charger » pour l'utiliser.");
+        }
+        catch (Exception ex) { _dialogs.Error(ex.Message, "VERIS MOD — import refusé"); }
+    }
 
     // ---------------------------------------------------------------- construction des cartes
 
@@ -568,6 +725,7 @@ public sealed class MainViewModel : ObservableObject
 
         int userCount = Sounds.Count(s => s.Kind == SoundKind.User);
         LibraryInfo = $"Bibliothèque : {userCount} son(s) perso • le bouton + d'une carte ajoute un son à sa catégorie.";
+        RefreshFavoriteInfos();
     }
 
     public void ReloadProfiles()
@@ -1064,7 +1222,7 @@ public sealed class MainViewModel : ObservableObject
     {
         if (card == null)
         {
-            ShowToast("Glisse le fichier sur la carte de l'événement voulu (chaque catégorie a ses sons).");
+            ShowToast("Va sur la page de l'événement voulu, puis glisse le fichier sur la grande carte (chaque catégorie a ses sons).");
             return;
         }
         ImportForCard(card, path);
@@ -1102,6 +1260,7 @@ public sealed class MainViewModel : ObservableObject
         {
             bool now = FavoritesService.Toggle(card.Id, sound.Id);
             card.SetFavorites(FavoritesService.Get(card.Id));
+            RefreshFavoriteInfos();
             if (_randomEachEvent) ConfigService.SyncRandomVariants();    // les variantes suivent les favoris
             ShowToast(now
                 ? $"★ « {sound.Name} » est maintenant favori pour « {card.Title} »."
@@ -1115,6 +1274,7 @@ public sealed class MainViewModel : ObservableObject
     /// <summary>Aléatoire à chaque événement actif : Discord joue un favori différent à chaque fois.</summary>
     public bool RandomEachEvent => _randomEachEvent;
     public string RandomModeText => _randomEachEvent ? "Aléatoire auto : ON" : "Aléatoire auto : OFF";
+    public string RandomChipText => _randomEachEvent ? "Auto : ON" : "Auto : OFF";
 
     private void SetRandomFlag(bool on)
     {
@@ -1124,6 +1284,7 @@ public sealed class MainViewModel : ObservableObject
         _randomEachEvent = on;
         OnPropertyChanged(nameof(RandomEachEvent));
         OnPropertyChanged(nameof(RandomModeText));
+        OnPropertyChanged(nameof(RandomChipText));
     }
 
     /// <summary>Active ou coupe l'aléatoire à chaque événement (favoris ★ de chaque catégorie).</summary>
@@ -1343,3 +1504,16 @@ public sealed class PreviewPlayer
         _player = null;
     }
 }
+
+/// <summary>Une page du carrousel (onglet cliquable et point de pagination).</summary>
+public sealed class PageTab : ObservableObject
+{
+    private bool _isActive;
+    public PageTab(int index, string title) { Index = index; Title = title; }
+    public int Index { get; }
+    public string Title { get; }
+    public bool IsActive { get => _isActive; set => Set(ref _isActive, value); }
+}
+
+/// <summary>Une pastille de la page « Aléatoire » : nombre de favoris d'une catégorie.</summary>
+public sealed record FavoriteInfo(string Text, bool IsReady);

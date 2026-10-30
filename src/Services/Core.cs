@@ -15,7 +15,7 @@ namespace Audely.Services;
 public static class AppInfo
 {
     public const string Name = "VERIS MOD";
-    public const string Version = "1.8.0";
+    public const string Version = "1.9.0";
     public const string Edition = "C# / .NET 8";
     public const string Creator = "byRedemptiion";
 }

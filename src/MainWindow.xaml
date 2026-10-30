@@ -12,7 +12,7 @@
         FontFamily="/Assets/Fonts/#Manrope, Segoe UI Variable Display, Segoe UI"
         UseLayoutRounding="True" SnapsToDevicePixels="True"
         TextOptions.TextFormattingMode="Ideal"
-        AllowDrop="True" DragOver="OnDragOver" Drop="OnDrop"
+        AllowDrop="True" DragOver="OnDragOver" Drop="OnDrop" PreviewKeyDown="OnWindowKeyDown"
         Background="Transparent" Foreground="{DynamicResource TextBrush}">
 
   <shell:WindowChrome.WindowChrome>
@@ -24,160 +24,90 @@
   <Window.Resources>
     <BooleanToVisibilityConverter x:Key="BoolToVis"/>
 
-    <!-- Carte d'événement : une seule définition pour les 10 cartes (2 colonnes × 5 lignes). -->
-    <DataTemplate x:Key="EventCardTemplate" DataType="{x:Type vm:EventCardViewModel}">
-      <Border Style="{StaticResource SoundCardStyle}" ToolTip="{Binding Description}"
-              RenderTransformOrigin="0.5,0.5">
-        <Border.RenderTransform>
-          <TranslateTransform Y="0"/>
-        </Border.RenderTransform>
-        <Border.Effect>
-          <DropShadowEffect BlurRadius="14" ShadowDepth="3" Direction="270"
-                            Color="{DynamicResource ShadowColor}" Opacity="{DynamicResource ShadowOpacity}"/>
-        </Border.Effect>
-        <Border.Triggers>
-          <EventTrigger RoutedEvent="MouseEnter">
-            <BeginStoryboard>
-              <Storyboard>
-                <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)"
-                                 To="-2" Duration="0:0:0.14"/>
-              </Storyboard>
-            </BeginStoryboard>
-          </EventTrigger>
-          <EventTrigger RoutedEvent="MouseLeave">
-            <BeginStoryboard>
-              <Storyboard>
-                <DoubleAnimation Storyboard.TargetProperty="(UIElement.RenderTransform).(TranslateTransform.Y)"
-                                 To="0" Duration="0:0:0.18"/>
-              </Storyboard>
-            </BeginStoryboard>
-          </EventTrigger>
-        </Border.Triggers>
-        <Grid>
-          <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/>
-          </Grid.RowDefinitions>
-
-          <!-- Icône · titre · pastille d'état -->
-          <Grid>
-            <Grid.ColumnDefinitions>
-              <ColumnDefinition Width="Auto"/>
-              <ColumnDefinition Width="*"/>
-              <ColumnDefinition Width="Auto"/>
-            </Grid.ColumnDefinitions>
-            <Border Width="30" Height="30" CornerRadius="9"
-                    Background="{Binding IconBg}" BorderBrush="{Binding IconBorder}"
-                    BorderThickness="1">
-              <Path Data="{Binding IconGeometry}" Fill="{Binding IconFg}" Stretch="Uniform"
-                    Width="16" Height="16"
-                    HorizontalAlignment="Center" VerticalAlignment="Center"/>
-            </Border>
-            <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="10,0,8,0">
-              <TextBlock Text="{Binding Title}" FontSize="13" FontWeight="Bold"
-                         TextTrimming="CharacterEllipsis"/>
-              <TextBlock Text="{Binding Id}" FontSize="11"
+    <!-- Onglet de catégorie (rangée au-dessus de la carte). -->
+    <Style x:Key="PageTabStyle" TargetType="Button">
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Focusable" Value="False"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Border x:Name="Bd" Margin="3,2" Padding="12,5" CornerRadius="10" BorderThickness="1"
+                    Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource LineBrush}">
+              <TextBlock x:Name="Label" Text="{TemplateBinding Content}" FontSize="12" FontWeight="SemiBold"
                          Foreground="{DynamicResource MutedBrush}"/>
-            </StackPanel>
-            <Border Grid.Column="2" CornerRadius="10" Padding="9,3"
-                    VerticalAlignment="Center" ToolTip="{Binding StateText}">
-              <Border.Style>
-                <Style TargetType="Border">
-                  <Setter Property="Background" Value="{DynamicResource FieldBrush}"/>
-                  <Style.Triggers>
-                    <DataTrigger Binding="{Binding IsConfigured}" Value="True">
-                      <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
-                    </DataTrigger>
-                  </Style.Triggers>
-                </Style>
-              </Border.Style>
-              <TextBlock Text="{Binding ChipText}" FontSize="11" FontWeight="Bold">
-                <TextBlock.Style>
-                  <Style TargetType="TextBlock">
-                    <Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/>
-                    <Style.Triggers>
-                      <DataTrigger Binding="{Binding IsConfigured}" Value="True">
-                        <Setter Property="Foreground" Value="{DynamicResource Accent2Brush}"/>
-                      </DataTrigger>
-                    </Style.Triggers>
-                  </Style>
-                </TextBlock.Style>
-              </TextBlock>
             </Border>
-          </Grid>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource AccentLineBrush}"/>
+                <Setter TargetName="Label" Property="Foreground" Value="{DynamicResource TextBrush}"/>
+              </Trigger>
+              <DataTrigger Binding="{Binding IsActive}" Value="True">
+                <Setter TargetName="Bd" Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
+                <Setter TargetName="Bd" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                <Setter TargetName="Label" Property="Foreground" Value="{DynamicResource Accent2Brush}"/>
+                <Setter TargetName="Label" Property="FontWeight" Value="ExtraBold"/>
+              </DataTrigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
 
-          <!-- Choix du son -->
-          <ComboBox Grid.Row="1" Margin="0,9,0,9"
-                    ItemsSource="{Binding Options}"
-                    SelectedItem="{Binding SelectedOption, Mode=TwoWay}">
-            <ComboBox.ItemTemplate>
-              <DataTemplate>
-                <TextBlock Text="{Binding Label}"/>
-              </DataTemplate>
-            </ComboBox.ItemTemplate>
-          </ComboBox>
+    <!-- Point de pagination sous la carte : le point actif s'allonge. -->
+    <Style x:Key="PageDotStyle" TargetType="Button">
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Focusable" Value="False"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Grid Background="Transparent" Margin="3,6">
+              <Border x:Name="Dot" Width="9" Height="9" CornerRadius="5" Background="{DynamicResource LineBrush}"/>
+            </Grid>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="Dot" Property="Background" Value="{DynamicResource AccentLineBrush}"/>
+              </Trigger>
+              <DataTrigger Binding="{Binding IsActive}" Value="True">
+                <Setter TargetName="Dot" Property="Width" Value="26"/>
+                <Setter TargetName="Dot" Property="Background" Value="{DynamicResource AccentBrush}"/>
+              </DataTrigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
 
-          <!-- ▶ · volume · ★ · + · Appliquer · restaurer -->
-          <Grid Grid.Row="2">
-            <Grid.ColumnDefinitions>
-              <ColumnDefinition Width="Auto"/>
-              <ColumnDefinition Width="*"/>
-              <ColumnDefinition Width="46"/>
-              <ColumnDefinition Width="Auto"/>
-              <ColumnDefinition Width="Auto"/>
-              <ColumnDefinition Width="Auto"/>
-              <ColumnDefinition Width="Auto"/>
-            </Grid.ColumnDefinitions>
-            <Button Style="{StaticResource IconButtonStyle}" Width="28"
-                    Command="{Binding TestCommand}" ToolTip="Tester le son">
-              <Path Data="M8 5v14l11-7z" Stretch="Uniform" Width="11" Height="11"
-                    Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
-            </Button>
-            <Slider Grid.Column="1" Minimum="0" Maximum="100" TickFrequency="5"
-                    IsMoveToPointEnabled="True" VerticalAlignment="Center" Margin="10,0,6,0"
-                    Foreground="{Binding IconFg}"
-                    Value="{Binding Volume, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-            <TextBlock Grid.Column="2" Text="{Binding VolumeText}" FontSize="12" FontWeight="Bold"
-                       Foreground="{DynamicResource Accent2Brush}"
-                       VerticalAlignment="Center" TextAlignment="Right"/>
-            <Button Grid.Column="3" Style="{StaticResource IconButtonStyle}" Width="28" Margin="8,0,0,0"
-                    Command="{Binding ToggleFavoriteCommand}"
-                    ToolTip="Favori ★ : ce son sera tiré au sort par « Aléatoire »">
-              <Path Stretch="Uniform" Width="14" Height="14">
-                <Path.Style>
-                  <Style TargetType="Path">
-                    <Setter Property="Data" Value="M22 9.24l-7.19-.62L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.63-7.03L22 9.24zM12 15.4l-3.76 2.27 1-4.28-3.32-2.88 4.38-.38L12 6.1l1.71 4.04 4.38.38-3.32 2.88 1 4.28L12 15.4z"/>
-                    <Setter Property="Fill" Value="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
-                    <Style.Triggers>
-                      <DataTrigger Binding="{Binding IsSelectedFavorite}" Value="True">
-                        <Setter Property="Fill" Value="{DynamicResource AccentBrush}"/>
-                        <Setter Property="Data" Value="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>
-                      </DataTrigger>
-                    </Style.Triggers>
-                  </Style>
-                </Path.Style>
-              </Path>
-            </Button>
-            <Button Grid.Column="4" Style="{StaticResource IconButtonStyle}" Width="28" Margin="6,0,0,0"
-                    Command="{Binding AddSoundCommand}"
-                    ToolTip="Ajouter un son à cette catégorie">
-              <Path Data="M19 13h-6v6h-2v-6H5v-2h6V5h2v6h6v2z" Stretch="Uniform" Width="12" Height="12"
-                    Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
-            </Button>
-            <Button Grid.Column="5" Content="Appliquer" Style="{StaticResource ApplyButtonStyle}"
-                    Margin="10,0,6,0" Command="{Binding ApplyCommand}"/>
-            <Button Grid.Column="6" Style="{StaticResource IconButtonStyle}" Width="28"
-                    Command="{Binding RestoreCommand}"
-                    ToolTip="Restaurer le son Discord d'origine">
-              <Path Data="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l2.37-.78C21.08 11.03 17.15 8 12.5 8z"
-                    Stretch="Uniform" Width="13" Height="13"
-                    Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
-            </Button>
-          </Grid>
-        </Grid>
-      </Border>
-    </DataTemplate>
+    <!-- Grande flèche ronde sur le bord de la carte. -->
+    <Style x:Key="ArrowButtonStyle" TargetType="Button">
+      <Setter Property="Width" Value="52"/>
+      <Setter Property="Height" Value="52"/>
+      <Setter Property="Cursor" Value="Hand"/>
+      <Setter Property="Focusable" Value="False"/>
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="Button">
+            <Grid>
+              <Ellipse x:Name="Disc" Fill="{DynamicResource AccentFillBrush}">
+                <Ellipse.Effect>
+                  <DropShadowEffect BlurRadius="18" ShadowDepth="3" Direction="270"
+                                    Color="{DynamicResource AccentColor}" Opacity="0.45"/>
+                </Ellipse.Effect>
+              </Ellipse>
+              <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                TextElement.Foreground="{DynamicResource OnAccentBrush}"/>
+            </Grid>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="Disc" Property="Opacity" Value="0.88"/>
+              </Trigger>
+              <Trigger Property="IsPressed" Value="True">
+                <Setter TargetName="Disc" Property="Opacity" Value="0.7"/>
+              </Trigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
   </Window.Resources>
 
   <Border x:Name="RootBorder" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
@@ -283,7 +213,6 @@
         <Grid.ColumnDefinitions>
           <ColumnDefinition Width="176"/>
           <ColumnDefinition Width="*"/>
-          <ColumnDefinition Width="324"/>
         </Grid.ColumnDefinitions>
 
         <!-- Navigation -->
@@ -314,12 +243,6 @@
                          FontWeight="ExtraBold" Margin="8,0,0,7"/>
               <Button Content="Tout appliquer" Style="{StaticResource NavButtonStyle}"
                       Command="{Binding ApplyAllCommand}"/>
-              <Button Content="Aléatoire" Style="{StaticResource NavButtonStyle}"
-                      Command="{Binding RandomizeCommand}"
-                      ToolTip="Tire au sort un son favori ★ par catégorie."/>
-              <Button Content="{Binding RandomModeText}" Style="{StaticResource NavButtonStyle}"
-                      Command="{Binding ToggleRandomModeCommand}"
-                      ToolTip="Un favori ★ différent à chaque message, appel, micro… (au moins 2 favoris dans la catégorie)."/>
               <Button Content="Tout restaurer" Style="{StaticResource NavButtonStyle}"
                       Command="{Binding RestoreAllCommand}"/>
               <Button Content="Activer" Style="{StaticResource NavButtonStyle}"
@@ -356,8 +279,9 @@
         </Border>
 
         <!-- Centre -->
-        <Grid Grid.Column="1" Margin="0,0,12,0">
+        <Grid Grid.Column="1">
           <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
@@ -371,7 +295,7 @@
             <StackPanel VerticalAlignment="Center">
               <TextBlock Text="Sons Discord" FontFamily="{DynamicResource DisplayFont}"
                          FontSize="{DynamicResource H1Size}" FontWeight="ExtraBold"/>
-              <TextBlock Text="Un son et un volume par événement. Réversible en un clic."
+              <TextBlock Text="Fais défiler les catégories : flèches, glisser, ← → ou molette."
                          Foreground="{DynamicResource MutedBrush}" FontSize="12" Margin="0,3,0,0"/>
             </StackPanel>
 
@@ -381,7 +305,7 @@
               <StackPanel Orientation="Horizontal">
                 <TextBlock Text="Profil" Foreground="{DynamicResource MutedBrush}" FontSize="12"
                            VerticalAlignment="Center" Margin="3,0,8,0"/>
-                <ComboBox Width="150" MinHeight="30" ItemsSource="{Binding Profiles}"
+                <ComboBox Width="140" MinHeight="30" ItemsSource="{Binding Profiles}"
                           SelectedItem="{Binding SelectedProfile, Mode=TwoWay}">
                   <ComboBox.ItemTemplate>
                     <DataTemplate>
@@ -393,6 +317,12 @@
                         Margin="8,0,0,0" Height="30" Command="{Binding SaveProfileCommand}"/>
                 <Button Content="Charger" Style="{StaticResource CompactButtonStyle}"
                         Margin="8,0,0,0" Height="30" Command="{Binding LoadProfileCommand}"/>
+                <Button Content="Exporter" Style="{StaticResource CompactButtonStyle}"
+                        Margin="8,0,0,0" Height="30" Command="{Binding ExportProfileCommand}"
+                        ToolTip="Enregistre le profil choisi dans un fichier .veris à partager."/>
+                <Button Content="Importer" Style="{StaticResource CompactButtonStyle}"
+                        Margin="8,0,0,0" Height="30" Command="{Binding ImportProfileCommand}"
+                        ToolTip="Ajoute un profil reçu (.veris). Tu peux aussi glisser le fichier sur la fenêtre."/>
                 <Button Content="×" Style="{StaticResource IconButtonStyle}" Height="30"
                         Margin="8,0,0,0" Command="{Binding DeleteProfileCommand}"
                         ToolTip="Supprimer le profil"/>
@@ -443,204 +373,396 @@
             </Border>
           </StackPanel>
 
-          <Border Grid.Row="2" Style="{StaticResource PanelStyle}" Padding="6">
-            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
-              <ItemsControl ItemsSource="{Binding Cards}"
-                            ItemTemplate="{StaticResource EventCardTemplate}">
-                <ItemsControl.ItemsPanel>
-                  <ItemsPanelTemplate>
-                    <UniformGrid Columns="2"/>
-                  </ItemsPanelTemplate>
-                </ItemsControl.ItemsPanel>
-              </ItemsControl>
-            </ScrollViewer>
-          </Border>
-        </Grid>
+          <!-- Onglets : accès direct à une catégorie -->
+          <ItemsControl Grid.Row="2" ItemsSource="{Binding Tabs}" HorizontalAlignment="Center" Margin="0,0,0,8">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate>
+                <WrapPanel HorizontalAlignment="Center"/>
+              </ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <Button Style="{StaticResource PageTabStyle}" Content="{Binding Title}"
+                        Command="{Binding DataContext.GoToPageCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                        CommandParameter="{Binding Index}"/>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
 
-        <!-- Droite : appel entrant -->
-        <Border Grid.Column="2" Style="{StaticResource PanelStyle}" Padding="16"
-                DataContext="{Binding Featured}">
-          <Grid>
+          <!-- Scène : une grande carte au centre, on tourne les pages (flèches, glisser, ← →, molette). -->
+          <Grid Grid.Row="3" x:Name="Stage" ClipToBounds="True" Background="Transparent"
+                PreviewMouseLeftButtonDown="OnStageMouseDown" PreviewMouseMove="OnStageMouseMove"
+                PreviewMouseLeftButtonUp="OnStageMouseUp" LostMouseCapture="OnStageLostCapture"
+                PreviewMouseWheel="OnStageWheel">
             <Grid.RowDefinitions>
-              <RowDefinition Height="Auto"/>
-              <RowDefinition Height="150"/>
-              <RowDefinition Height="Auto"/>
-              <RowDefinition Height="Auto"/>
-              <RowDefinition Height="Auto"/>
               <RowDefinition Height="*"/>
               <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
-            <Grid>
-              <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="Auto"/>
-              </Grid.ColumnDefinitions>
-              <StackPanel>
-                <TextBlock Text="{Binding Title}" FontFamily="{DynamicResource DisplayFont}"
-                           FontSize="{DynamicResource H2Size}" FontWeight="ExtraBold"/>
-                <TextBlock Text="{Binding Id}" Foreground="{DynamicResource MutedBrush}"
-                           FontSize="11" Margin="0,2,0,0"/>
-              </StackPanel>
-              <Border Grid.Column="1" Background="{DynamicResource AccentSoftBrush}"
-                      BorderBrush="{DynamicResource AccentLineBrush}" BorderThickness="1"
-                      CornerRadius="8" Padding="9,4" VerticalAlignment="Top">
-                <TextBlock Text="APERÇU" Foreground="{DynamicResource Accent2Brush}"
-                           FontSize="11" FontWeight="ExtraBold"/>
-              </Border>
-            </Grid>
+            <Grid Margin="50,6,50,2" MaxWidth="1060" MaxHeight="590" VerticalAlignment="Center">
+              <!-- Cartes voisines, en transparence derrière : l'effet « pages ». -->
+              <Border Margin="-50,26,44,26" Opacity="0.4" IsHitTestVisible="False"
+                      Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource LineBrush}"
+                      BorderThickness="1" CornerRadius="22"/>
+              <Border Margin="44,26,-50,26" Opacity="0.4" IsHitTestVisible="False"
+                      Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource LineBrush}"
+                      BorderThickness="1" CornerRadius="22"/>
 
-            <!-- Aperçu : mascotte V.E.R.I.S qui pulse pendant la lecture + onde animée -->
-            <Border Grid.Row="1" Margin="0,12,0,12" CornerRadius="14" ClipToBounds="True"
-                    Background="{DynamicResource AccentSoftBrush}"
-                    BorderBrush="{DynamicResource AccentLineBrush}" BorderThickness="1">
-              <Grid>
-                <Ellipse x:Name="PulseRing" Width="104" Height="104" Opacity="0"
-                         Stroke="{DynamicResource AccentBrush}" StrokeThickness="2"
-                         HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,14,0,0"
-                         RenderTransformOrigin="0.5,0.5">
-                  <Ellipse.RenderTransform>
-                    <ScaleTransform x:Name="PulseScale" ScaleX="1" ScaleY="1"/>
-                  </Ellipse.RenderTransform>
-                </Ellipse>
-                <Image x:Name="FeaturedMascot" Height="92" Stretch="Uniform"
-                       HorizontalAlignment="Center" VerticalAlignment="Top" Margin="0,18,0,0"
-                       RenderTransformOrigin="0.5,0.5">
-                  <Image.RenderTransform>
-                    <ScaleTransform x:Name="MascotScale" ScaleX="1" ScaleY="1"/>
-                  </Image.RenderTransform>
-                </Image>
-                <StackPanel x:Name="WaveHost" Orientation="Horizontal" Height="24"
-                            HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,9"/>
-                <Button Width="34" Height="34" Command="{Binding TestCommand}"
-                        HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,9,9"
-                        ToolTip="Lire l'aperçu" Padding="0">
-                  <Button.Template>
-                    <ControlTemplate TargetType="Button">
-                      <Grid>
-                        <Ellipse x:Name="Disc" Fill="{DynamicResource AccentFillBrush}"/>
-                        <Path Data="M8 5v14l11-7z" Stretch="Uniform" Width="13" Height="13"
-                              Fill="{DynamicResource OnAccentBrush}"
-                              HorizontalAlignment="Center" VerticalAlignment="Center"
-                              Margin="2,0,0,0"/>
-                      </Grid>
-                      <ControlTemplate.Triggers>
-                        <Trigger Property="IsMouseOver" Value="True">
-                          <Setter TargetName="Disc" Property="Opacity" Value="0.88"/>
-                        </Trigger>
-                        <Trigger Property="IsEnabled" Value="False">
-                          <Setter TargetName="Disc" Property="Opacity" Value="0.4"/>
-                        </Trigger>
-                      </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                  </Button.Template>
-                </Button>
-              </Grid>
-            </Border>
+              <!-- La grande carte -->
+              <Border x:Name="CardBody" DataContext="{Binding CurrentCard}"
+                      Background="{DynamicResource PanelBrush}" BorderBrush="{DynamicResource AccentLineBrush}"
+                      BorderThickness="1" CornerRadius="26" Padding="28,26" RenderTransformOrigin="0.5,0.5">
+                <Border.RenderTransform>
+                  <TranslateTransform x:Name="CardSlide" X="0"/>
+                </Border.RenderTransform>
+                <Border.Effect>
+                  <DropShadowEffect BlurRadius="30" ShadowDepth="6" Direction="270"
+                                    Color="{DynamicResource ShadowColor}" Opacity="{DynamicResource ShadowOpacity}"/>
+                </Border.Effect>
 
-            <ComboBox Grid.Row="2" MinHeight="34" FontSize="13" ItemsSource="{Binding Options}"
-                      SelectedItem="{Binding SelectedOption, Mode=TwoWay}">
-              <ComboBox.ItemTemplate>
-                <DataTemplate>
-                  <TextBlock Text="{Binding Label}"/>
-                </DataTemplate>
-              </ComboBox.ItemTemplate>
-            </ComboBox>
+                <Grid>
+                  <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="300"/>
+                    <ColumnDefinition Width="30"/>
+                    <ColumnDefinition Width="*"/>
+                  </Grid.ColumnDefinitions>
 
-            <Grid Grid.Row="3" Margin="0,12,0,0">
-              <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="Auto"/>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="50"/>
-              </Grid.ColumnDefinitions>
-              <TextBlock Text="VOL" FontSize="11" FontWeight="Bold" VerticalAlignment="Center"
-                         Foreground="{DynamicResource MutedBrush}" Margin="0,0,10,0"/>
-              <Slider Grid.Column="1" Minimum="0" Maximum="100" TickFrequency="5"
-                      IsMoveToPointEnabled="True" VerticalAlignment="Center"
-                      Value="{Binding Volume, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
-              <TextBlock Grid.Column="2" Text="{Binding VolumeText}" HorizontalAlignment="Right"
-                         VerticalAlignment="Center" FontSize="12" FontWeight="Bold"
-                         Foreground="{DynamicResource Accent2Brush}"/>
-            </Grid>
+                  <!-- Aperçu : mascotte V.E.R.I.S qui pulse pendant la lecture + onde animée -->
+                  <Border CornerRadius="20" ClipToBounds="True" MinHeight="300"
+                          Background="{DynamicResource AccentSoftBrush}"
+                          BorderBrush="{DynamicResource AccentLineBrush}" BorderThickness="1">
+                    <Grid>
+                      <TextBlock Text="{Binding DataContext.PageCounter, RelativeSource={RelativeSource AncestorType=Window}}"
+                                 Foreground="{DynamicResource Accent2Brush}" FontSize="12" FontWeight="ExtraBold"
+                                 HorizontalAlignment="Left" VerticalAlignment="Top" Margin="16,14,0,0"/>
+                      <Ellipse x:Name="PulseRing" Width="170" Height="170" Opacity="0"
+                               Stroke="{DynamicResource AccentBrush}" StrokeThickness="2"
+                               HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,0,0,40"
+                               RenderTransformOrigin="0.5,0.5">
+                        <Ellipse.RenderTransform>
+                          <ScaleTransform x:Name="PulseScale" ScaleX="1" ScaleY="1"/>
+                        </Ellipse.RenderTransform>
+                      </Ellipse>
+                      <Image x:Name="FeaturedMascot" Height="150" Stretch="Uniform"
+                             HorizontalAlignment="Center" VerticalAlignment="Center" Margin="0,0,0,40"
+                             RenderTransformOrigin="0.5,0.5">
+                        <Image.RenderTransform>
+                          <ScaleTransform x:Name="MascotScale" ScaleX="1" ScaleY="1"/>
+                        </Image.RenderTransform>
+                      </Image>
+                      <StackPanel x:Name="WaveHost" Orientation="Horizontal" Height="24"
+                                  HorizontalAlignment="Center" VerticalAlignment="Bottom" Margin="0,0,0,22"/>
+                      <Button Width="46" Height="46" Command="{Binding TestCommand}"
+                              HorizontalAlignment="Right" VerticalAlignment="Bottom" Margin="0,0,14,14"
+                              ToolTip="Écouter ce son" Padding="0">
+                        <Button.Style>
+                          <Style TargetType="Button">
+                            <Setter Property="Visibility" Value="Visible"/>
+                            <Style.Triggers>
+                              <DataTrigger Binding="{Binding DataContext.IsRandomPage, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
+                                <Setter Property="Visibility" Value="Collapsed"/>
+                              </DataTrigger>
+                            </Style.Triggers>
+                          </Style>
+                        </Button.Style>
+                        <Button.Template>
+                          <ControlTemplate TargetType="Button">
+                            <Grid>
+                              <Ellipse x:Name="Disc" Fill="{DynamicResource AccentFillBrush}"/>
+                              <Path Data="M8 5v14l11-7z" Stretch="Uniform" Width="16" Height="16"
+                                    Fill="{DynamicResource OnAccentBrush}"
+                                    HorizontalAlignment="Center" VerticalAlignment="Center"
+                                    Margin="3,0,0,0"/>
+                            </Grid>
+                            <ControlTemplate.Triggers>
+                              <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Disc" Property="Opacity" Value="0.88"/>
+                              </Trigger>
+                              <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="Disc" Property="Opacity" Value="0.4"/>
+                              </Trigger>
+                            </ControlTemplate.Triggers>
+                          </ControlTemplate>
+                        </Button.Template>
+                      </Button>
+                    </Grid>
+                  </Border>
 
-            <StackPanel Grid.Row="4" Margin="0,12,0,0">
-              <Grid>
-                <Grid.ColumnDefinitions>
-                  <ColumnDefinition Width="*"/>
-                  <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-                <Button Content="Appliquer" Style="{StaticResource CompactButtonStyle}"
-                        Margin="0,0,4,0" Height="32" Command="{Binding ApplyCommand}"/>
-                <Button Grid.Column="1" Content="Réinitialiser"
-                        Style="{StaticResource CompactButtonStyle}" Margin="4,0,0,0" Height="32"
-                        Command="{Binding RestoreCommand}"/>
-              </Grid>
-              <Grid Margin="0,8,0,0">
-                <Grid.ColumnDefinitions>
-                  <ColumnDefinition Width="*"/>
-                  <ColumnDefinition Width="*"/>
-                </Grid.ColumnDefinitions>
-                <Button Style="{StaticResource CompactButtonStyle}" Margin="0,0,4,0" Height="32"
-                        Command="{Binding ToggleFavoriteCommand}"
-                        ToolTip="Les favoris ★ sont tirés au sort par « Aléatoire »">
-                  <TextBlock>
-                    <TextBlock.Style>
-                      <Style TargetType="TextBlock">
-                        <Setter Property="Text" Value="☆ Favori"/>
+                  <!-- ============ Page d'un événement ============ -->
+                  <Grid Grid.Column="2" VerticalAlignment="Center">
+                    <Grid.Style>
+                      <Style TargetType="Grid">
+                        <Setter Property="Visibility" Value="Visible"/>
                         <Style.Triggers>
-                          <DataTrigger Binding="{Binding IsSelectedFavorite}" Value="True">
-                            <Setter Property="Text" Value="★ Favori"/>
-                            <Setter Property="Foreground" Value="{DynamicResource Accent2Brush}"/>
+                          <DataTrigger Binding="{Binding DataContext.IsRandomPage, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
+                            <Setter Property="Visibility" Value="Collapsed"/>
                           </DataTrigger>
                         </Style.Triggers>
                       </Style>
-                    </TextBlock.Style>
-                  </TextBlock>
-                </Button>
-                <Button Grid.Column="1" Content="+ Ajouter un son" Style="{StaticResource CompactButtonStyle}"
-                        Margin="4,0,0,0" Height="32" Command="{Binding AddSoundCommand}"
-                        ToolTip="Ajoute un son à cette catégorie"/>
-              </Grid>
-              <Button Style="{StaticResource PrimaryButtonStyle}"
-                      Margin="0,8,0,0" Height="40" FontSize="13" Command="{Binding TestCommand}">
-                <StackPanel Orientation="Horizontal">
-                  <Path Data="M8 5v14l11-7z" Stretch="Uniform" Width="12" Height="12"
-                        Fill="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"
-                        VerticalAlignment="Center" Margin="0,0,8,0"/>
-                  <TextBlock Text="Tester ce son" VerticalAlignment="Center"/>
-                </StackPanel>
+                    </Grid.Style>
+
+                    <StackPanel>
+                      <Grid>
+                        <Grid.ColumnDefinitions>
+                          <ColumnDefinition Width="Auto"/>
+                          <ColumnDefinition Width="*"/>
+                          <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <Border Width="52" Height="52" CornerRadius="15"
+                                Background="{Binding IconBg}" BorderBrush="{Binding IconBorder}" BorderThickness="1">
+                          <Path Data="{Binding IconGeometry}" Fill="{Binding IconFg}" Stretch="Uniform"
+                                Width="26" Height="26" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="14,0,10,0">
+                          <TextBlock Text="{Binding Title}" FontFamily="{DynamicResource DisplayFont}"
+                                     FontSize="{DynamicResource H1Size}" FontWeight="ExtraBold"
+                                     TextTrimming="CharacterEllipsis"/>
+                          <TextBlock Text="{Binding Id}" FontSize="12" Foreground="{DynamicResource MutedBrush}"/>
+                        </StackPanel>
+                        <Border Grid.Column="2" CornerRadius="10" Padding="11,5" VerticalAlignment="Center"
+                                ToolTip="{Binding StateText}">
+                          <Border.Style>
+                            <Style TargetType="Border">
+                              <Setter Property="Background" Value="{DynamicResource FieldBrush}"/>
+                              <Style.Triggers>
+                                <DataTrigger Binding="{Binding IsConfigured}" Value="True">
+                                  <Setter Property="Background" Value="{DynamicResource AccentSoftBrush}"/>
+                                </DataTrigger>
+                              </Style.Triggers>
+                            </Style>
+                          </Border.Style>
+                          <TextBlock Text="{Binding ChipText}" FontSize="12" FontWeight="Bold">
+                            <TextBlock.Style>
+                              <Style TargetType="TextBlock">
+                                <Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/>
+                                <Style.Triggers>
+                                  <DataTrigger Binding="{Binding IsConfigured}" Value="True">
+                                    <Setter Property="Foreground" Value="{DynamicResource Accent2Brush}"/>
+                                  </DataTrigger>
+                                </Style.Triggers>
+                              </Style>
+                            </TextBlock.Style>
+                          </TextBlock>
+                        </Border>
+                      </Grid>
+
+                      <TextBlock Text="{Binding Description}" FontSize="14" TextWrapping="Wrap"
+                                 Foreground="{DynamicResource MutedBrush}" Margin="0,16,0,0"/>
+
+                      <ComboBox Margin="0,20,0,0" MinHeight="40" FontSize="14"
+                                ItemsSource="{Binding Options}"
+                                SelectedItem="{Binding SelectedOption, Mode=TwoWay}">
+                        <ComboBox.ItemTemplate>
+                          <DataTemplate>
+                            <TextBlock Text="{Binding Label}"/>
+                          </DataTemplate>
+                        </ComboBox.ItemTemplate>
+                      </ComboBox>
+
+                      <Grid Margin="0,18,0,0">
+                        <Grid.ColumnDefinitions>
+                          <ColumnDefinition Width="Auto"/>
+                          <ColumnDefinition Width="*"/>
+                          <ColumnDefinition Width="56"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="VOL" FontSize="12" FontWeight="Bold" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource MutedBrush}" Margin="0,0,12,0"/>
+                        <Slider Grid.Column="1" Minimum="0" Maximum="100" TickFrequency="5"
+                                IsMoveToPointEnabled="True" VerticalAlignment="Center"
+                                Foreground="{Binding IconFg}"
+                                Value="{Binding Volume, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/>
+                        <TextBlock Grid.Column="2" Text="{Binding VolumeText}" HorizontalAlignment="Right"
+                                   VerticalAlignment="Center" FontSize="14" FontWeight="Bold"
+                                   Foreground="{DynamicResource Accent2Brush}"/>
+                      </Grid>
+
+                      <WrapPanel Margin="0,22,0,0">
+                        <Button Content="Appliquer" Style="{StaticResource PrimaryButtonStyle}"
+                                Height="40" MinWidth="120" Margin="0,0,8,8" FontSize="14"
+                                Command="{Binding ApplyCommand}"/>
+                        <Button Content="↺ Réinitialiser" Style="{StaticResource CompactButtonStyle}"
+                                Height="40" Margin="0,0,8,8" Padding="14,5" FontSize="13"
+                                Command="{Binding RestoreCommand}"
+                                ToolTip="Remet le son d'origine de Discord pour cet événement."/>
+                        <Button Style="{StaticResource CompactButtonStyle}" Height="40" Margin="0,0,8,8"
+                                Padding="14,5" FontSize="13" Command="{Binding ToggleFavoriteCommand}"
+                                ToolTip="Les favoris ★ sont tirés au sort par « Aléatoire »">
+                          <TextBlock>
+                            <TextBlock.Style>
+                              <Style TargetType="TextBlock">
+                                <Setter Property="Text" Value="☆ Favori"/>
+                                <Style.Triggers>
+                                  <DataTrigger Binding="{Binding IsSelectedFavorite}" Value="True">
+                                    <Setter Property="Text" Value="★ Favori"/>
+                                    <Setter Property="Foreground" Value="{DynamicResource Accent2Brush}"/>
+                                  </DataTrigger>
+                                </Style.Triggers>
+                              </Style>
+                            </TextBlock.Style>
+                          </TextBlock>
+                        </Button>
+                        <Button Content="+ Ajouter un son" Style="{StaticResource CompactButtonStyle}"
+                                Height="40" Margin="0,0,8,8" Padding="14,5" FontSize="13"
+                                Command="{Binding AddSoundCommand}"
+                                ToolTip="Ajoute un fichier audio à cette catégorie (ou glisse-le sur la carte)."/>
+                      </WrapPanel>
+
+                      <TextBlock Text="{Binding StateText}" Foreground="{DynamicResource Accent2Brush}"
+                                 FontSize="12" TextWrapping="Wrap" Margin="0,6,0,0"/>
+                    </StackPanel>
+                  </Grid>
+
+                  <!-- ============ Page « Aléatoire » ============ -->
+                  <Grid Grid.Column="2" VerticalAlignment="Center"
+                        DataContext="{Binding DataContext, RelativeSource={RelativeSource AncestorType=Window}}">
+                    <Grid.Style>
+                      <Style TargetType="Grid">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                        <Style.Triggers>
+                          <DataTrigger Binding="{Binding DataContext.IsRandomPage, RelativeSource={RelativeSource AncestorType=Window}}" Value="True">
+                            <Setter Property="Visibility" Value="Visible"/>
+                          </DataTrigger>
+                        </Style.Triggers>
+                      </Style>
+                    </Grid.Style>
+
+                    <StackPanel>
+                      <Grid>
+                        <Grid.ColumnDefinitions>
+                          <ColumnDefinition Width="Auto"/>
+                          <ColumnDefinition Width="*"/>
+                          <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <Border Width="52" Height="52" CornerRadius="15"
+                                Background="{DynamicResource AccentSoftBrush}"
+                                BorderBrush="{DynamicResource AccentLineBrush}" BorderThickness="1">
+                          <Path Data="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM7.5 18c-.83 0-1.5-.67-1.5-1.5S6.67 15 7.5 15s1.5.67 1.5 1.5S8.33 18 7.5 18zm0-9C6.67 9 6 8.33 6 7.5S6.67 6 7.5 6 9 6.67 9 7.5 8.33 9 7.5 9zm4.5 4.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm4.5 4.5c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zm0-9c-.83 0-1.5-.67-1.5-1.5S15.67 6 16.5 6s1.5.67 1.5 1.5S17.33 9 16.5 9z"
+                                Fill="{DynamicResource Accent2Brush}" Stretch="Uniform" Width="26" Height="26"
+                                HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="14,0,10,0">
+                          <TextBlock Text="Aléatoire" FontFamily="{DynamicResource DisplayFont}"
+                                     FontSize="{DynamicResource H1Size}" FontWeight="ExtraBold"/>
+                          <TextBlock Text="un son différent à chaque fois" FontSize="12"
+                                     Foreground="{DynamicResource MutedBrush}"/>
+                        </StackPanel>
+                        <Border Grid.Column="2" CornerRadius="10" Padding="11,5" VerticalAlignment="Center"
+                                Background="{DynamicResource AccentSoftBrush}">
+                          <TextBlock Text="{Binding RandomChipText}" FontSize="12" FontWeight="Bold"
+                                     Foreground="{DynamicResource Accent2Brush}"/>
+                        </Border>
+                      </Grid>
+
+                      <TextBlock Text="Marque des sons ★ dans chaque catégorie (bouton Favori), puis laisse VERIS choisir pour toi."
+                                 FontSize="14" TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}"
+                                 Margin="0,16,0,0"/>
+
+                      <WrapPanel Margin="0,18,0,0">
+                        <Button Style="{StaticResource PrimaryButtonStyle}" Height="40" Margin="0,0,8,8" FontSize="14"
+                                Command="{Binding RandomizeCommand}"
+                                ToolTip="Tire au sort un son favori ★ par catégorie et l'applique.">
+                          <TextBlock Text="🎲 Tirer au sort maintenant"/>
+                        </Button>
+                        <Button Content="{Binding RandomModeText}" Style="{StaticResource CompactButtonStyle}"
+                                Height="40" Margin="0,0,8,8" Padding="14,5" FontSize="13"
+                                Command="{Binding ToggleRandomModeCommand}"
+                                ToolTip="Un favori ★ différent à chaque message, appel, micro… (au moins 2 favoris dans la catégorie)."/>
+                      </WrapPanel>
+
+                      <TextBlock Text="Auto : un son différent à chaque message, appel, etc. Il faut au moins 2 favoris ★ dans une catégorie, et Discord doit être relancé une fois après l'activation."
+                                 FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource MutedBrush}"
+                                 Margin="0,2,0,0"/>
+
+                      <ItemsControl ItemsSource="{Binding FavoriteInfos}" Margin="0,16,0,0">
+                        <ItemsControl.ItemsPanel>
+                          <ItemsPanelTemplate>
+                            <WrapPanel/>
+                          </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                          <DataTemplate>
+                            <Border CornerRadius="9" Padding="10,5" Margin="0,0,7,7" BorderThickness="1"
+                                    Background="{DynamicResource FieldBrush}">
+                              <Border.Style>
+                                <Style TargetType="Border">
+                                  <Setter Property="BorderBrush" Value="{DynamicResource LineBrush}"/>
+                                  <Style.Triggers>
+                                    <DataTrigger Binding="{Binding IsReady}" Value="True">
+                                      <Setter Property="BorderBrush" Value="{DynamicResource OkBrush}"/>
+                                    </DataTrigger>
+                                  </Style.Triggers>
+                                </Style>
+                              </Border.Style>
+                              <TextBlock Text="{Binding Text}" FontSize="12" FontWeight="SemiBold">
+                                <TextBlock.Style>
+                                  <Style TargetType="TextBlock">
+                                    <Setter Property="Foreground" Value="{DynamicResource MutedBrush}"/>
+                                    <Style.Triggers>
+                                      <DataTrigger Binding="{Binding IsReady}" Value="True">
+                                        <Setter Property="Foreground" Value="{DynamicResource OkBrush}"/>
+                                      </DataTrigger>
+                                    </Style.Triggers>
+                                  </Style>
+                                </TextBlock.Style>
+                              </TextBlock>
+                            </Border>
+                          </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                      </ItemsControl>
+                      <TextBlock Text="{Binding RandomSummary}" FontSize="12" TextWrapping="Wrap"
+                                 Foreground="{DynamicResource Accent2Brush}" Margin="0,0,0,0"/>
+
+                      <WrapPanel Margin="0,16,0,0">
+                        <Button Content="Voix V.E.R.I.S" Style="{StaticResource CompactButtonStyle}"
+                                Height="36" Margin="0,0,8,8" Padding="14,5" FontSize="13"
+                                ToolTip="Annonce chaque événement avec la voix du robot (réversible)."
+                                Command="{Binding ApplyVerisVoiceCommand}"/>
+                        <Button Content="↺ Tout restaurer" Style="{StaticResource CompactButtonStyle}"
+                                Height="36" Margin="0,0,8,8" Padding="14,5" FontSize="13"
+                                Command="{Binding RestoreAllCommand}"/>
+                      </WrapPanel>
+                    </StackPanel>
+                  </Grid>
+                </Grid>
+              </Border>
+
+              <!-- Flèches -->
+              <Button Style="{StaticResource ArrowButtonStyle}" Panel.ZIndex="5"
+                      HorizontalAlignment="Left" VerticalAlignment="Center" Margin="-26,0,0,0"
+                      Command="{Binding PreviousPageCommand}" ToolTip="Catégorie précédente (←)">
+                <Path Data="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z" Fill="{DynamicResource OnAccentBrush}"
+                      Stretch="Uniform" Width="22" Height="22"/>
               </Button>
-              <TextBlock Text="{Binding StateText}" Foreground="{DynamicResource Accent2Brush}"
-                         FontSize="11" TextWrapping="Wrap" Margin="0,8,0,0"/>
-            </StackPanel>
+              <Button Style="{StaticResource ArrowButtonStyle}" Panel.ZIndex="5"
+                      HorizontalAlignment="Right" VerticalAlignment="Center" Margin="0,0,-26,0"
+                      Command="{Binding NextPageCommand}" ToolTip="Catégorie suivante (→)">
+                <Path Data="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z" Fill="{DynamicResource OnAccentBrush}"
+                      Stretch="Uniform" Width="22" Height="22"/>
+              </Button>
+            </Grid>
 
-            <StackPanel Grid.Row="5" Margin="0,14,0,0">
-              <Border Height="1" Background="{DynamicResource LineBrush}" Margin="0,0,0,12"/>
-              <TextBlock Text="RACCOURCIS" Foreground="{DynamicResource MutedBrush}" FontSize="11"
-                         FontWeight="ExtraBold"/>
-              <WrapPanel Margin="0,8,0,0">
-                <Button Content="Voix V.E.R.I.S" Style="{StaticResource PrimaryButtonStyle}"
-                        Margin="0,0,6,6" Height="30"
-                        ToolTip="Annonce chaque événement avec la voix du robot (réversible)."
-                        Command="{Binding DataContext.ApplyVerisVoiceCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
-                <Button Content="Aléatoire" Style="{StaticResource CompactButtonStyle}"
-                        Margin="0,0,6,6" Height="30"
-                        ToolTip="Tire au sort un de tes sons favoris ★ pour chaque catégorie."
-                        Command="{Binding DataContext.RandomizeCommand, RelativeSource={RelativeSource AncestorType=Window}}"/>
-              </WrapPanel>
-              <TextBlock Text="Astuces : glisse un fichier audio sur une carte pour l'ajouter à sa catégorie, et marque tes préférés avec ★ pour le mode Aléatoire."
-                         Foreground="{DynamicResource MutedBrush}" FontSize="11"
+            <!-- Points + astuce -->
+            <StackPanel Grid.Row="1" HorizontalAlignment="Center" Margin="0,2,0,2">
+              <ItemsControl ItemsSource="{Binding Tabs}" HorizontalAlignment="Center">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <StackPanel Orientation="Horizontal"/>
+                  </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate>
+                    <Button Style="{StaticResource PageDotStyle}" ToolTip="{Binding Title}"
+                            Command="{Binding DataContext.GoToPageCommand, RelativeSource={RelativeSource AncestorType=Window}}"
+                            CommandParameter="{Binding Index}"/>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+              <TextBlock Text="Astuce : glisse un fichier audio sur la carte pour l'ajouter à sa catégorie, ou un fichier .veris sur la fenêtre pour importer un profil."
+                         Foreground="{DynamicResource MutedBrush}" FontSize="11" TextAlignment="Center"
                          TextWrapping="Wrap" Margin="0,2,0,0"/>
-              <TextBlock Text="{Binding DataContext.LibraryInfo, RelativeSource={RelativeSource AncestorType=Window}}"
-                         Foreground="{DynamicResource MutedBrush}" FontSize="11"
-                         TextWrapping="Wrap" Margin="0,4,0,0"/>
             </StackPanel>
-
-            <TextBlock Grid.Row="6" Text="VERIS MOD · C# / .NET 8 · Overlay Bridge"
-                       Foreground="{DynamicResource MutedBrush}" FontSize="10" Opacity="0.7"
-                       HorizontalAlignment="Center" Margin="0,12,0,0"/>
           </Grid>
-        </Border>
+        </Grid>
       </Grid>
 
       <!-- ===================== Pied de page ===================== -->

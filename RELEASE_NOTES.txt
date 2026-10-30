@@ -1,1 +1,1 @@
-Aléatoire auto : un favori ★ différent à chaque message, appel, micro… (bouton « Aléatoire auto » dans le menu, désactivé par défaut). Relance Discord une fois après la mise à jour.
+Nouvelle interface « pocket » : une grande carte au centre, on tourne les catégories avec les flèches, en glissant, avec ← → ou la molette. « Aléatoire » devient une page du carrousel. Partage de profils : boutons Exporter / Importer (fichier .veris, glisser-déposable sur la fenêtre).

@@ -45,6 +45,7 @@ public partial class MainWindow : Window
         _vm.PropertyChanged += (_, e) =>
         {
             if (e.PropertyName == nameof(MainViewModel.IsPlaying)) SetPlaying(_vm.IsPlaying);
+            else if (e.PropertyName == nameof(MainViewModel.PageIndex)) AnimatePage(_vm.PageDirection);
         };
         _vm.ToastRequested += ShowToast;
         _toastTimer.Tick += (_, _) => { _toastTimer.Stop(); HideToast(); };
@@ -188,10 +189,18 @@ public partial class MainWindow : Window
     private void OnDrop(object sender, DragEventArgs e)
     {
         if (e.Data.GetData(DataFormats.FileDrop) is not string[] files || files.Length == 0) return;
-
-        EventCardViewModel? card = FindCard(e.OriginalSource as DependencyObject);
-        _vm.HandleDroppedFile(files[0], card);
         e.Handled = true;
+
+        // Un profil partagé (.veris) : importé après la fin du glisser-déposer (la boîte de dialogue est modale).
+        if (string.Equals(Path.GetExtension(files[0]), ProfileShareService.Extension, StringComparison.OrdinalIgnoreCase))
+        {
+            string profilePath = files[0];
+            Dispatcher.BeginInvoke(new Action(() => _vm.ImportProfileFile(profilePath)), DispatcherPriority.Background);
+            return;
+        }
+
+        EventCardViewModel? card = _vm.IsRandomPage ? null : FindCard(e.OriginalSource as DependencyObject);
+        _vm.HandleDroppedFile(files[0], card);
     }
 
     /// <summary>Remonte l'arbre visuel depuis l'élément survolé jusqu'à la carte d'événement.</summary>
@@ -206,6 +215,142 @@ public partial class MainWindow : Window
                 : LogicalTreeHelper.GetParent(node);
         }
         return null;
+    }
+
+    // ---------------------------------------------------------------- carrousel : animation, glisser, clavier, molette
+
+    private const double SwipeThreshold = 90;      // distance (px) à partir de laquelle un glisser change de page
+    private bool _swipeDown;
+    private bool _swiping;
+    private Point _swipeStart;
+    private DateTime _lastWheel = DateTime.MinValue;
+
+    /// <summary>La carte arrive du côté vers lequel on tourne la page, en fondu.</summary>
+    private void AnimatePage(int direction)
+    {
+        var ease = new CubicEase { EasingMode = EasingMode.EaseOut };
+        CardSlide.BeginAnimation(TranslateTransform.XProperty,
+            new DoubleAnimation(direction * 90, 0, TimeSpan.FromMilliseconds(260)) { EasingFunction = ease });
+        CardBody.BeginAnimation(UIElement.OpacityProperty,
+            new DoubleAnimation(0.0, 1.0, TimeSpan.FromMilliseconds(220)));
+    }
+
+    private void SpringBack()
+    {
+        CardSlide.BeginAnimation(TranslateTransform.XProperty,
+            new DoubleAnimation(0, TimeSpan.FromMilliseconds(180)) { EasingFunction = new CubicEase { EasingMode = EasingMode.EaseOut } });
+        CardBody.BeginAnimation(UIElement.OpacityProperty, new DoubleAnimation(1.0, TimeSpan.FromMilliseconds(180)));
+    }
+
+    /// <summary>Les contrôles (boutons, curseur, liste…) gardent leurs propres gestes : pas de glisser dessus.</summary>
+    private bool IsInteractive(DependencyObject? start)
+    {
+        DependencyObject? node = start;
+        while (node != null && !ReferenceEquals(node, Stage))
+        {
+            if (node is System.Windows.Controls.Primitives.ButtonBase
+                or System.Windows.Controls.Primitives.RangeBase
+                or System.Windows.Controls.Primitives.TextBoxBase
+                or System.Windows.Controls.Primitives.Selector
+                or System.Windows.Controls.Primitives.ScrollBar
+                or System.Windows.Controls.Primitives.Thumb) return true;
+
+            node = node is Visual or System.Windows.Media.Media3D.Visual3D
+                ? VisualTreeHelper.GetParent(node)
+                : LogicalTreeHelper.GetParent(node);
+        }
+        return false;
+    }
+
+    private void OnStageMouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        _swiping = false;
+        _swipeDown = !IsInteractive(e.OriginalSource as DependencyObject);
+        if (_swipeDown) _swipeStart = e.GetPosition(Stage);
+    }
+
+    private void OnStageMouseMove(object sender, System.Windows.Input.MouseEventArgs e)
+    {
+        if (!_swipeDown) return;
+        if (e.LeftButton != System.Windows.Input.MouseButtonState.Pressed) { EndSwipe(); return; }
+
+        double dx = e.GetPosition(Stage).X - _swipeStart.X;
+        if (!_swiping && Math.Abs(dx) > 10)
+        {
+            _swiping = true;
+            Stage.CaptureMouse();
+        }
+
+        if (_swiping)
+        {
+            CardSlide.BeginAnimation(TranslateTransform.XProperty, null);
+            CardBody.BeginAnimation(UIElement.OpacityProperty, null);
+            CardSlide.X = Math.Clamp(dx * 0.6, -240, 240);
+            CardBody.Opacity = 1.0 - Math.Min(Math.Abs(dx) / 700.0, 0.4);
+        }
+    }
+
+    private void OnStageMouseUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (!_swiping) { _swipeDown = false; return; }
+
+        double dx = e.GetPosition(Stage).X - _swipeStart.X;
+        e.Handled = true;
+        EndSwipe();
+
+        if (Math.Abs(dx) >= SwipeThreshold)
+        {
+            // Glisser vers la gauche = page suivante, comme sur un téléphone.
+            (dx < 0 ? _vm.NextPageCommand : _vm.PreviousPageCommand).Execute(null);
+        }
+        else
+        {
+            SpringBack();
+        }
+    }
+
+    private void OnStageLostCapture(object sender, System.Windows.Input.MouseEventArgs e)
+    {
+        if (_swiping) { _swiping = false; _swipeDown = false; SpringBack(); }
+    }
+
+    private void EndSwipe()
+    {
+        bool wasSwiping = _swiping;
+        _swipeDown = false;
+        _swiping = false;
+        if (wasSwiping && ReferenceEquals(System.Windows.Input.Mouse.Captured, Stage)) Stage.ReleaseMouseCapture();
+    }
+
+    /// <summary>Molette : page suivante / précédente (avec un petit délai pour les pavés tactiles).</summary>
+    private void OnStageWheel(object sender, System.Windows.Input.MouseWheelEventArgs e)
+    {
+        // Liste déroulante ouverte, curseur en cours de réglage… : la molette leur appartient.
+        if (System.Windows.Input.Mouse.Captured != null && !ReferenceEquals(System.Windows.Input.Mouse.Captured, Stage)) return;
+        if (IsInteractive(e.OriginalSource as DependencyObject)) return;
+        if (_vm.IsOnboardingOpen || _vm.IsColorPickerOpen) return;
+
+        if ((DateTime.UtcNow - _lastWheel).TotalMilliseconds < 280) { e.Handled = true; return; }
+        _lastWheel = DateTime.UtcNow;
+
+        (e.Delta < 0 ? _vm.NextPageCommand : _vm.PreviousPageCommand).Execute(null);
+        e.Handled = true;
+    }
+
+    /// <summary>Flèches ← → du clavier, sauf quand on règle un curseur, une liste ou un champ de texte.</summary>
+    private void OnWindowKeyDown(object sender, System.Windows.Input.KeyEventArgs e)
+    {
+        if (e.Key != System.Windows.Input.Key.Left && e.Key != System.Windows.Input.Key.Right) return;
+        if (System.Windows.Input.Keyboard.Modifiers != System.Windows.Input.ModifierKeys.None) return;
+        if (_vm.IsOnboardingOpen || _vm.IsColorPickerOpen) return;
+
+        if (System.Windows.Input.Keyboard.FocusedElement is System.Windows.Controls.Primitives.TextBoxBase
+            or System.Windows.Controls.Primitives.Selector
+            or System.Windows.Controls.Primitives.RangeBase
+            or ComboBoxItem) return;
+
+        (e.Key == System.Windows.Input.Key.Right ? _vm.NextPageCommand : _vm.PreviousPageCommand).Execute(null);
+        e.Handled = true;
     }
 
     private void ToggleMaximize() =>
