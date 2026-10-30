@@ -27,8 +27,8 @@ public static class HookService
 
     private const string OverlayNeedle = "preload: require.resolve('./overlayPreload'),";
 
-    // Legacy Audely compatibility : le nom du script est écrit dans le hook déjà posé dans Discord.
-    public static string LoaderPath => Path.Combine(AppPaths.DataDir, "audely_runtime_loader.js");
+    // Legacy ViiCord compatibility : le nom du script est écrit dans le hook déjà posé dans Discord.
+    public static string LoaderPath => Path.Combine(AppPaths.DataDir, "viicord_runtime_loader.js");
 
     // ---------------------------------------------------------------- état
 
@@ -58,7 +58,7 @@ public static class HookService
 
     public static string WriteRuntimeLoader()
     {
-        string text = ReadEmbedded("ViiCord.Js.audely_runtime_loader.js");
+        string text = ReadEmbedded("ViiCord.Js.viicord_runtime_loader.js");
         File.WriteAllText(LoaderPath, text, Utf8NoBom);
         return LoaderPath;
     }
@@ -72,7 +72,7 @@ public static class HookService
         try
         {
             if (!File.Exists(LoaderPath)) return false;          // jamais installé : rien à mettre à jour
-            string fresh = ReadEmbedded("ViiCord.Js.audely_runtime_loader.js");
+            string fresh = ReadEmbedded("ViiCord.Js.viicord_runtime_loader.js");
             string current = File.ReadAllText(LoaderPath, Utf8NoBom);
             if (string.Equals(current, fresh, StringComparison.Ordinal)) return false;
             File.WriteAllText(LoaderPath, fresh, Utf8NoBom);
@@ -83,7 +83,7 @@ public static class HookService
 
     private static string WriteOverlayPreload(OverlayInfo overlay)
     {
-        string text = ReadEmbedded("ViiCord.Js.audely_overlay_preload.js");
+        string text = ReadEmbedded("ViiCord.Js.viicord_overlay_preload.js");
         File.WriteAllText(overlay.BridgePreloadPath, text, Utf8NoBom);
         return overlay.BridgePreloadPath;
     }
@@ -170,9 +170,9 @@ public static class HookService
 
         string loaderLiteral = System.Text.Json.JsonSerializer.Serialize(loaderPath);
         string prefix =
-            "// AUDELY_RUNTIME_HOOK_BEGIN\r\n" +
+            "// VIICORD_RUNTIME_HOOK_BEGIN\r\n" +
             "try { require(" + loaderLiteral + "); } catch (e) { console.error(\"[ViiCord] loader failed\", e); }\r\n" +
-            "// AUDELY_RUNTIME_HOOK_END";
+            "// VIICORD_RUNTIME_HOOK_END";
 
         string patched = prefix + "\r\n" + current;
         WriteReplacing(core.IndexPath, patched);
@@ -280,7 +280,7 @@ public static class HookService
         string preloadPath = WriteOverlayPreload(overlay);
 
         string replacement =
-            "preload: require.resolve('./audely_overlay_preload'), // " + DiscordService.OverlayMarker;
+            "preload: require.resolve('./viicord_overlay_preload'), // " + DiscordService.OverlayMarker;
         string patched = hostText.Replace(OverlayNeedle, replacement, StringComparison.Ordinal);
 
         if (patched == hostText)

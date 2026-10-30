@@ -15,11 +15,8 @@ try {
   const path = require("path");
 
   const VERSION = "1.3.7";
-  // Legacy Audely compatibility : les installations d'avant ViiCord utilisent encore le dossier « Audely »
-  // (devenu un lien vers « ViiCord » après la migration). On préfère « ViiCord » s'il contient la configuration.
   const APPDATA_DIR = process.env.APPDATA || "";
-  const ROOT_CANDIDATES = [path.join(APPDATA_DIR, "ViiCord"), path.join(APPDATA_DIR, "Audely")];
-  const ROOT = ROOT_CANDIDATES.find(dir => fs.existsSync(path.join(dir, "runtime-config.json"))) || ROOT_CANDIDATES[0];
+  const ROOT = path.join(APPDATA_DIR, "ViiCord");
   const CONFIG = path.join(ROOT, "runtime-config.json");
   const LOG = path.join(ROOT, "overlay-runtime.log");
   const MAX_BYTES = 5 * 1024 * 1024;
@@ -98,16 +95,16 @@ try {
   function buildMainWorldCode(payload) {
     return `(() => {
       const incoming = ${JSON.stringify(payload)};
-      const bridge = globalThis.__AudelyOverlayBridge;
+      const bridge = globalThis.__ViiCordOverlayBridge;
       const trace = message => {
         try { bridge && bridge.log && bridge.log(String(message)); } catch {}
-        try { console.log("[AudelyOverlay] " + String(message)); } catch {}
+        try { console.log("[ViiCordOverlay] " + String(message)); } catch {}
       };
 
-      globalThis.__AUDELY_OVERLAY_SOUNDS = incoming.sounds || {};
-      globalThis.__AUDELY_OVERLAY_NEEDLES = incoming.needles || {};
-      globalThis.__AUDELY_OVERLAY_BLOBS = globalThis.__AUDELY_OVERLAY_BLOBS || {};
-      globalThis.__AUDELY_OVERLAY_LAST = globalThis.__AUDELY_OVERLAY_LAST || {};
+      globalThis.__VIICORD_OVERLAY_SOUNDS = incoming.sounds || {};
+      globalThis.__VIICORD_OVERLAY_NEEDLES = incoming.needles || {};
+      globalThis.__VIICORD_OVERLAY_BLOBS = globalThis.__VIICORD_OVERLAY_BLOBS || {};
+      globalThis.__VIICORD_OVERLAY_LAST = globalThis.__VIICORD_OVERLAY_LAST || {};
 
       const decodeBytes = sound => {
         const binary = atob(String(sound && sound.b64 || ""));
@@ -117,10 +114,10 @@ try {
       };
 
       const blobUrlFor = targetId => {
-        const sound = globalThis.__AUDELY_OVERLAY_SOUNDS[targetId];
+        const sound = globalThis.__VIICORD_OVERLAY_SOUNDS[targetId];
         if (!sound) return null;
 
-        const cached = globalThis.__AUDELY_OVERLAY_BLOBS[targetId];
+        const cached = globalThis.__VIICORD_OVERLAY_BLOBS[targetId];
         if (cached && cached.sha256 === String(sound.sha256 || "") && cached.url) {
           return cached.url;
         }
@@ -131,7 +128,7 @@ try {
 
         const blob = new Blob([decodeBytes(sound)], { type: String(sound.mime || "audio/mpeg") });
         const url = URL.createObjectURL(blob);
-        globalThis.__AUDELY_OVERLAY_BLOBS[targetId] = {
+        globalThis.__VIICORD_OVERLAY_BLOBS[targetId] = {
           sha256: String(sound.sha256 || ""),
           url
         };
@@ -143,20 +140,20 @@ try {
         try { src = String(value && value.url || value || "").toLowerCase(); } catch {}
         if (!src || src.startsWith("blob:") || src.startsWith("data:")) return null;
 
-        for (const [needle, targetId] of Object.entries(globalThis.__AUDELY_OVERLAY_NEEDLES || {})) {
+        for (const [needle, targetId] of Object.entries(globalThis.__VIICORD_OVERLAY_NEEDLES || {})) {
           if (needle && src.includes(String(needle).toLowerCase())) return targetId;
         }
         return null;
       };
 
       const playCustom = (targetId, reason) => {
-        const sound = globalThis.__AUDELY_OVERLAY_SOUNDS[targetId];
+        const sound = globalThis.__VIICORD_OVERLAY_SOUNDS[targetId];
         if (!sound) return false;
 
         const now = Date.now();
-        const last = Number(globalThis.__AUDELY_OVERLAY_LAST[targetId] || 0);
+        const last = Number(globalThis.__VIICORD_OVERLAY_LAST[targetId] || 0);
         if (now - last < 150) return true;
-        globalThis.__AUDELY_OVERLAY_LAST[targetId] = now;
+        globalThis.__VIICORD_OVERLAY_LAST[targetId] = now;
 
         try {
           const url = blobUrlFor(targetId);
@@ -201,11 +198,11 @@ try {
         return bytes;
       };
 
-      if (!globalThis.__AUDELY_OVERLAY_FETCH_PATCHED && typeof globalThis.fetch === "function") {
+      if (!globalThis.__VIICORD_OVERLAY_FETCH_PATCHED && typeof globalThis.fetch === "function") {
         const nativeFetch = globalThis.fetch.bind(globalThis);
         globalThis.fetch = function(input, init) {
           const targetId = matchTarget(input);
-          if (targetId && globalThis.__AUDELY_OVERLAY_SOUNDS[targetId]) {
+          if (targetId && globalThis.__VIICORD_OVERLAY_SOUNDS[targetId]) {
             playCustom(targetId, "fetch");
             trace("FETCH_HIT target=" + targetId + " src=" + String(input && input.url || input || "").slice(-160));
             const silent = makeSilentWav();
@@ -220,11 +217,11 @@ try {
           }
           return nativeFetch(input, init);
         };
-        globalThis.__AUDELY_OVERLAY_FETCH_PATCHED = true;
+        globalThis.__VIICORD_OVERLAY_FETCH_PATCHED = true;
         trace("FETCH_PATCHED");
       }
 
-      if (!globalThis.__AUDELY_OVERLAY_MEDIA_PATCHED && globalThis.HTMLMediaElement) {
+      if (!globalThis.__VIICORD_OVERLAY_MEDIA_PATCHED && globalThis.HTMLMediaElement) {
         const proto = globalThis.HTMLMediaElement.prototype;
         const srcDesc = Object.getOwnPropertyDescriptor(proto, "src");
 
@@ -235,9 +232,9 @@ try {
             get: srcDesc.get,
             set(value) {
               const targetId = matchTarget(value);
-              if (targetId && globalThis.__AUDELY_OVERLAY_SOUNDS[targetId]) {
+              if (targetId && globalThis.__VIICORD_OVERLAY_SOUNDS[targetId]) {
                 const url = blobUrlFor(targetId);
-                const sound = globalThis.__AUDELY_OVERLAY_SOUNDS[targetId];
+                const sound = globalThis.__VIICORD_OVERLAY_SOUNDS[targetId];
                 try { this.volume = Math.max(0, Math.min(1, Number(sound.volume))); } catch {}
                 trace("MEDIA_SRC_HIT target=" + targetId);
                 return srcDesc.set.call(this, url);
@@ -252,8 +249,8 @@ try {
           proto.setAttribute = function(name, value) {
             if (String(name).toLowerCase() === "src") {
               const targetId = matchTarget(value);
-              if (targetId && globalThis.__AUDELY_OVERLAY_SOUNDS[targetId]) {
-                const sound = globalThis.__AUDELY_OVERLAY_SOUNDS[targetId];
+              if (targetId && globalThis.__VIICORD_OVERLAY_SOUNDS[targetId]) {
+                const sound = globalThis.__VIICORD_OVERLAY_SOUNDS[targetId];
                 try { this.volume = Math.max(0, Math.min(1, Number(sound.volume))); } catch {}
                 trace("MEDIA_ATTR_HIT target=" + targetId);
                 return nativeSetAttribute.call(this, name, blobUrlFor(targetId));
@@ -269,8 +266,8 @@ try {
             try {
               const src = (srcDesc && srcDesc.get ? srcDesc.get.call(this) : "") || this.currentSrc || this.getAttribute("src") || "";
               const targetId = matchTarget(src);
-              if (targetId && globalThis.__AUDELY_OVERLAY_SOUNDS[targetId]) {
-                const sound = globalThis.__AUDELY_OVERLAY_SOUNDS[targetId];
+              if (targetId && globalThis.__VIICORD_OVERLAY_SOUNDS[targetId]) {
+                const sound = globalThis.__VIICORD_OVERLAY_SOUNDS[targetId];
                 try { this.volume = Math.max(0, Math.min(1, Number(sound.volume))); } catch {}
                 if (srcDesc && srcDesc.set) srcDesc.set.call(this, blobUrlFor(targetId));
                 trace("MEDIA_PLAY_HIT target=" + targetId);
@@ -280,18 +277,18 @@ try {
           };
         }
 
-        globalThis.__AUDELY_OVERLAY_MEDIA_PATCHED = true;
+        globalThis.__VIICORD_OVERLAY_MEDIA_PATCHED = true;
         trace("MEDIA_PATCHED");
       }
 
-      globalThis.__AUDELY_OVERLAY_HOOK_V124 = true;
-      trace("HOOK_ACTIVE version=1.3.7 targets=" + Object.keys(globalThis.__AUDELY_OVERLAY_SOUNDS).join(","));
-      return "Audely overlay hook active";
+      globalThis.__VIICORD_OVERLAY_HOOK_V124 = true;
+      trace("HOOK_ACTIVE version=1.3.7 targets=" + Object.keys(globalThis.__VIICORD_OVERLAY_SOUNDS).join(","));
+      return "ViiCord overlay hook active";
     })();`;
   }
 
   try {
-    contextBridge.exposeInMainWorld("__AudelyOverlayBridge", {
+    contextBridge.exposeInMainWorld("__ViiCordOverlayBridge", {
       version: VERSION,
       log: message => appendLog(String(message))
     });

@@ -63,7 +63,7 @@ function readPayload() {
       const file = path.resolve(ROOT, target.file);
 
       if (!file.startsWith(ROOT)) {
-        log(`skip target=${id}: chemin hors Audely`);
+        log(`skip target=${id}: chemin hors ViiCord`);
         continue;
       }
 
@@ -150,26 +150,26 @@ function buildRendererCode(payload) {
   return `(() => {
     const incoming = ${JSON.stringify(payload)};
 
-    globalThis.__AUDELY_SAFE_SOUNDS = incoming.sounds || {};
-    globalThis.__AUDELY_SAFE_NEEDLES = incoming.needles || {};
-    globalThis.__AUDELY_BLOB_CACHE = globalThis.__AUDELY_BLOB_CACHE || {};
-    globalThis.__AUDELY_TRACE_SEEN = globalThis.__AUDELY_TRACE_SEEN || new Set();
-    globalThis.__AUDELY_LAST_VARIANT = globalThis.__AUDELY_LAST_VARIANT || {};
+    globalThis.__VIICORD_SAFE_SOUNDS = incoming.sounds || {};
+    globalThis.__VIICORD_SAFE_NEEDLES = incoming.needles || {};
+    globalThis.__VIICORD_BLOB_CACHE = globalThis.__VIICORD_BLOB_CACHE || {};
+    globalThis.__VIICORD_TRACE_SEEN = globalThis.__VIICORD_TRACE_SEEN || new Set();
+    globalThis.__VIICORD_LAST_VARIANT = globalThis.__VIICORD_LAST_VARIANT || {};
 
     // V1.4.0 : choisit une variante au hasard (jamais deux fois la même d'affilée).
     // Retourne un son prêt à jouer ; sans variantes, retourne le son tel quel.
-    globalThis.__AUDELY_PICK = sound => {
+    globalThis.__VIICORD_PICK = sound => {
       try {
         const variants = sound && sound.variants;
         if (!Array.isArray(variants) || variants.length < 2) return sound;
 
         const id = String(sound.target || "");
-        const last = Number(globalThis.__AUDELY_LAST_VARIANT[id]);
+        const last = Number(globalThis.__VIICORD_LAST_VARIANT[id]);
         let index = Math.floor(Math.random() * variants.length);
         if (index === last) {
           index = (index + 1 + Math.floor(Math.random() * (variants.length - 1))) % variants.length;
         }
-        globalThis.__AUDELY_LAST_VARIANT[id] = index;
+        globalThis.__VIICORD_LAST_VARIANT[id] = index;
 
         const v = variants[index];
         return {
@@ -187,20 +187,20 @@ function buildRendererCode(payload) {
     const trace = message => {
       try {
         const key = String(message);
-        if (globalThis.__AUDELY_TRACE_SEEN.has(key)) return;
-        if (globalThis.__AUDELY_TRACE_SEEN.size > 220) return;
-        globalThis.__AUDELY_TRACE_SEEN.add(key);
-        console.log("[AudelySafe] " + key);
+        if (globalThis.__VIICORD_TRACE_SEEN.has(key)) return;
+        if (globalThis.__VIICORD_TRACE_SEEN.size > 220) return;
+        globalThis.__VIICORD_TRACE_SEEN.add(key);
+        console.log("[ViiCordSafe] " + key);
       } catch {}
     };
 
     const revokeChangedBlobUrls = () => {
       try {
-        for (const [id, cached] of Object.entries(globalThis.__AUDELY_BLOB_CACHE || {})) {
-          const next = globalThis.__AUDELY_SAFE_SOUNDS[id];
+        for (const [id, cached] of Object.entries(globalThis.__VIICORD_BLOB_CACHE || {})) {
+          const next = globalThis.__VIICORD_SAFE_SOUNDS[id];
           if (!next || !cached || cached.sha256 !== String(next.sha256 || "")) {
             try { URL.revokeObjectURL(cached.url); } catch {}
-            delete globalThis.__AUDELY_BLOB_CACHE[id];
+            delete globalThis.__VIICORD_BLOB_CACHE[id];
           }
         }
       } catch {}
@@ -215,10 +215,10 @@ function buildRendererCode(payload) {
     // message notifications can go through DesktopNotificationUtils instead
     // of the normal HTMLMediaElement path. We patch that layer directly,
     // and also patch SoundUtils.createSound as a second route.
-    const audelyMakeBlobUrl = sound => {
+    const viicordMakeBlobUrl = sound => {
       const id = String(sound && sound.target || "");
       const sha = String(sound && sound.sha256 || "");
-      const cached = globalThis.__AUDELY_BLOB_CACHE[id];
+      const cached = globalThis.__VIICORD_BLOB_CACHE[id];
 
       if (cached && cached.sha256 === sha && cached.url) return cached.url;
 
@@ -231,11 +231,11 @@ function buildRendererCode(payload) {
         { type: String(sound && sound.mime || "audio/mpeg") }
       );
       const url = URL.createObjectURL(blob);
-      globalThis.__AUDELY_BLOB_CACHE[id] = { sha256: sha, url: url };
+      globalThis.__VIICORD_BLOB_CACHE[id] = { sha256: sha, url: url };
       return url;
     };
 
-    const audelyMessageTypeToTarget = value => {
+    const viicordMessageTypeToTarget = value => {
       const type = String(value || "").toLowerCase();
       const clean = type
         .replace(/^.*[\/]/, "")
@@ -279,33 +279,33 @@ function buildRendererCode(payload) {
       return null;
     };
 
-    const audelyPlayDirect = (targetId, reason, loop, listenerDuration) => {
-      const sound = globalThis.__AUDELY_SAFE_SOUNDS[targetId];
+    const viicordPlayDirect = (targetId, reason, loop, listenerDuration) => {
+      const sound = globalThis.__VIICORD_SAFE_SOUNDS[targetId];
       if (!sound) return null;
 
       // DesktopNotificationUtils + SoundUtils may both see the same message.
       // Avoid playing our custom sound twice for the same notification.
       const now = Date.now();
-      const last = Number(globalThis.__AUDELY_MESSAGE_LAST_PLAY || 0);
+      const last = Number(globalThis.__VIICORD_MESSAGE_LAST_PLAY || 0);
       if (targetId === "message1" && now - last < 180) {
         trace("MESSAGE_DEDUPE reason=" + String(reason || ""));
         return Promise.resolve(true);
       }
-      if (targetId === "message1") globalThis.__AUDELY_MESSAGE_LAST_PLAY = now;
+      if (targetId === "message1") globalThis.__VIICORD_MESSAGE_LAST_PLAY = now;
 
       try {
-        const url = audelyMakeBlobUrl(globalThis.__AUDELY_PICK(sound));
+        const url = viicordMakeBlobUrl(globalThis.__VIICORD_PICK(sound));
         const audio = new Audio();
         audio.src = url;
         audio.volume = Math.max(0, Math.min(1, Number(sound.volume)));
         audio.loop = Boolean(loop);
 
-        globalThis.__AUDELY_DIRECT_AUDIOS =
-          globalThis.__AUDELY_DIRECT_AUDIOS || new Set();
-        globalThis.__AUDELY_DIRECT_AUDIOS.add(audio);
+        globalThis.__VIICORD_DIRECT_AUDIOS =
+          globalThis.__VIICORD_DIRECT_AUDIOS || new Set();
+        globalThis.__VIICORD_DIRECT_AUDIOS.add(audio);
 
         const cleanup = () => {
-          try { globalThis.__AUDELY_DIRECT_AUDIOS.delete(audio); } catch {}
+          try { globalThis.__VIICORD_DIRECT_AUDIOS.delete(audio); } catch {}
         };
 
         audio.addEventListener("ended", cleanup, { once: true });
@@ -332,7 +332,7 @@ function buildRendererCode(payload) {
             audio.addEventListener("error", () => {
               if (done) return;
               done = true;
-              reject(new Error("Audely custom message audio failed"));
+              reject(new Error("ViiCord custom message audio failed"));
             }, { once: true });
 
             const ms = Number(listenerDuration);
@@ -363,17 +363,17 @@ function buildRendererCode(payload) {
       }
     };
 
-    const audelyGetWebpackRequire = () => {
+    const viicordGetWebpackRequire = () => {
       try {
-        if (globalThis.__AUDELY_WEBPACK_REQUIRE) {
-          return globalThis.__AUDELY_WEBPACK_REQUIRE;
+        if (globalThis.__VIICORD_WEBPACK_REQUIRE) {
+          return globalThis.__VIICORD_WEBPACK_REQUIRE;
         }
 
         const chunks = globalThis.webpackChunkdiscord_app;
         if (!chunks || typeof chunks.push !== "function") return null;
 
         let webpackRequire = null;
-        const chunkId = "audely_" + Date.now() + "_" + Math.random();
+        const chunkId = "viicord_" + Date.now() + "_" + Math.random();
 
         chunks.push([
           [chunkId],
@@ -388,7 +388,7 @@ function buildRendererCode(payload) {
         } catch {}
 
         if (webpackRequire) {
-          globalThis.__AUDELY_WEBPACK_REQUIRE = webpackRequire;
+          globalThis.__VIICORD_WEBPACK_REQUIRE = webpackRequire;
 
           trace(
             "WEBPACK_REQUIRE_READY cache=" +
@@ -405,7 +405,7 @@ function buildRendererCode(payload) {
       }
     };
 
-    const audelyExportObjects = (exportsValue, maxDepth = 2) => {
+    const viicordExportObjects = (exportsValue, maxDepth = 2) => {
       const values = [];
       const visited = new Set();
 
@@ -454,7 +454,7 @@ function buildRendererCode(payload) {
       return values;
     };
 
-    const audelyFunctionSource = value => {
+    const viicordFunctionSource = value => {
       try {
         if (typeof value !== "function") return "";
         return Function.prototype.toString.call(value);
@@ -463,7 +463,7 @@ function buildRendererCode(payload) {
       }
     };
 
-    const audelyFindFactoryIds = (webpackRequire, signatures, mode = "all") => {
+    const viicordFindFactoryIds = (webpackRequire, signatures, mode = "all") => {
       const result = [];
       const factories = webpackRequire && webpackRequire.m;
       if (!factories) return result;
@@ -472,7 +472,7 @@ function buildRendererCode(payload) {
       try { entries = Object.entries(factories); } catch {}
 
       for (const [moduleId, factory] of entries) {
-        const source = audelyFunctionSource(factory);
+        const source = viicordFunctionSource(factory);
         if (!source) continue;
 
         const matches =
@@ -486,7 +486,7 @@ function buildRendererCode(payload) {
       return result;
     };
 
-    const audelyLoadModuleExports = (webpackRequire, moduleId) => {
+    const viicordLoadModuleExports = (webpackRequire, moduleId) => {
       try {
         return webpackRequire(moduleId);
       } catch (error) {
@@ -500,8 +500,8 @@ function buildRendererCode(payload) {
       }
     };
 
-    const audelyFindFunctionProperty = (root, sourceSignatures) => {
-      for (const candidate of audelyExportObjects(root, 3)) {
+    const viicordFindFunctionProperty = (root, sourceSignatures) => {
+      for (const candidate of viicordExportObjects(root, 3)) {
         let names = [];
         try { names = Object.getOwnPropertyNames(candidate); } catch {}
 
@@ -510,7 +510,7 @@ function buildRendererCode(payload) {
           try { value = candidate[name]; } catch { continue; }
           if (typeof value !== "function") continue;
 
-          const source = audelyFunctionSource(value);
+          const source = viicordFunctionSource(value);
           if (
             source &&
             sourceSignatures.every(signature => source.includes(signature))
@@ -523,7 +523,7 @@ function buildRendererCode(payload) {
       return null;
     };
 
-    const audelyHasProps = (value, props) => {
+    const viicordHasProps = (value, props) => {
       if (
         !value ||
         (typeof value !== "object" && typeof value !== "function")
@@ -542,7 +542,7 @@ function buildRendererCode(payload) {
       return true;
     };
 
-    const audelyFindByProps = (webpackRequire, props, depth = 3) => {
+    const viicordFindByProps = (webpackRequire, props, depth = 3) => {
       if (!webpackRequire || !webpackRequire.c) return null;
 
       let modules = [];
@@ -555,15 +555,15 @@ function buildRendererCode(payload) {
         try { exportsValue = moduleValue.exports; } catch {}
         if (!exportsValue) continue;
 
-        for (const candidate of audelyExportObjects(exportsValue, depth)) {
-          if (audelyHasProps(candidate, props)) return candidate;
+        for (const candidate of viicordExportObjects(exportsValue, depth)) {
+          if (viicordHasProps(candidate, props)) return candidate;
         }
       }
 
       return null;
     };
 
-    const audelyRequireCandidatesByStrings = () => {
+    const viicordRequireCandidatesByStrings = () => {
       // V1.3.7: intentionally disabled.
       // Calling webpackRequire(id) on a factory before Discord has naturally
       // loaded its dependencies caused startup errors such as:
@@ -571,12 +571,12 @@ function buildRendererCode(payload) {
       return [];
     };
 
-    const audelyFindByPropsWithFactories = (
+    const viicordFindByPropsWithFactories = (
       webpackRequire,
       props,
       factoryStrings
     ) => {
-      const cached = audelyFindByProps(
+      const cached = viicordFindByProps(
         webpackRequire,
         props,
         4
@@ -592,23 +592,23 @@ function buildRendererCode(payload) {
       return null;
     };
 
-    const audelyMarkPendingMessage = event => {
+    const viicordMarkPendingMessage = event => {
       try {
         if (
           !event ||
           event.type !== "MESSAGE_CREATE" ||
           !event.message ||
-          !globalThis.__AUDELY_SAFE_SOUNDS ||
-          !globalThis.__AUDELY_SAFE_SOUNDS.message1
+          !globalThis.__VIICORD_SAFE_SOUNDS ||
+          !globalThis.__VIICORD_SAFE_SOUNDS.message1
         ) {
           return;
         }
 
         // The normal focused path is already handled by Discord's sound
-        // engine / Audely's audio hooks. The dispatcher fallback is only
+        // engine / ViiCord's audio hooks. The dispatcher fallback is only
         // armed while Discord is unfocused, which is the game-mode case.
         if (document.hasFocus()) {
-          globalThis.__AUDELY_PENDING_MESSAGE = null;
+          globalThis.__VIICORD_PENDING_MESSAGE = null;
           return;
         }
 
@@ -618,7 +618,7 @@ function buildRendererCode(payload) {
           (String(message.channel_id || "") + ":" + Date.now())
         );
 
-        globalThis.__AUDELY_PENDING_MESSAGE = {
+        globalThis.__VIICORD_PENDING_MESSAGE = {
           token: token,
           at: Date.now(),
           handled: false
@@ -635,14 +635,14 @@ function buildRendererCode(payload) {
         setTimeout(() => {
           try {
             const pending =
-              globalThis.__AUDELY_PENDING_MESSAGE;
+              globalThis.__VIICORD_PENDING_MESSAGE;
 
             if (
               pending &&
               pending.token === token &&
               Date.now() - Number(pending.at || 0) >= 3500
             ) {
-              globalThis.__AUDELY_PENDING_MESSAGE = null;
+              globalThis.__VIICORD_PENDING_MESSAGE = null;
             }
           } catch {}
         }, 3600);
@@ -651,9 +651,9 @@ function buildRendererCode(payload) {
       }
     };
 
-    const audelyConsumePendingMessage = reason => {
+    const viicordConsumePendingMessage = reason => {
       try {
-        const pending = globalThis.__AUDELY_PENDING_MESSAGE;
+        const pending = globalThis.__VIICORD_PENDING_MESSAGE;
         if (!pending || pending.handled) return false;
 
         const age = Date.now() - Number(pending.at || 0);
@@ -668,7 +668,7 @@ function buildRendererCode(payload) {
           String(reason || "")
         );
 
-        audelyPlayDirect(
+        viicordPlayDirect(
           "message1",
           String(reason || "MESSAGE_CREATE"),
           false,
@@ -682,7 +682,7 @@ function buildRendererCode(payload) {
       }
     };
 
-    const audelyPatchDispatcher = dispatcher => {
+    const viicordPatchDispatcher = dispatcher => {
       try {
         if (
           !dispatcher ||
@@ -694,21 +694,21 @@ function buildRendererCode(payload) {
 
         const original = dispatcher.dispatch;
 
-        if (original.__AUDELY_DISPATCH_WRAPPED) {
-          globalThis.__AUDELY_DISPATCH_PATCHED = true;
+        if (original.__VIICORD_DISPATCH_WRAPPED) {
+          globalThis.__VIICORD_DISPATCH_PATCHED = true;
           return true;
         }
 
         const wrapped = function(...args) {
           try {
-            audelyMarkPendingMessage(args[0]);
+            viicordMarkPendingMessage(args[0]);
           } catch {}
 
           return original.apply(this, args);
         };
 
-        wrapped.__AUDELY_DISPATCH_WRAPPED = true;
-        wrapped.__AUDELY_NATIVE = original;
+        wrapped.__VIICORD_DISPATCH_WRAPPED = true;
+        wrapped.__VIICORD_NATIVE = original;
 
         try {
           dispatcher.dispatch = wrapped;
@@ -728,7 +728,7 @@ function buildRendererCode(payload) {
           }
         }
 
-        globalThis.__AUDELY_DISPATCH_PATCHED = true;
+        globalThis.__VIICORD_DISPATCH_PATCHED = true;
         trace("DISCORD_DISPATCH_PATCHED");
         return true;
       } catch (error) {
@@ -737,10 +737,10 @@ function buildRendererCode(payload) {
       }
     };
 
-    const audelyPatchNotificationConstructor = () => {
+    const viicordPatchNotificationConstructor = () => {
       try {
         const NativeNotification =
-          globalThis.__AUDELY_NATIVE_NOTIFICATION ||
+          globalThis.__VIICORD_NATIVE_NOTIFICATION ||
           globalThis.Notification;
 
         if (typeof NativeNotification !== "function") {
@@ -749,20 +749,20 @@ function buildRendererCode(payload) {
 
         if (
           globalThis.Notification &&
-          globalThis.Notification.__AUDELY_NOTIFICATION_WRAPPED
+          globalThis.Notification.__VIICORD_NOTIFICATION_WRAPPED
         ) {
-          globalThis.__AUDELY_NOTIFICATION_PATCHED = true;
+          globalThis.__VIICORD_NOTIFICATION_PATCHED = true;
           return true;
         }
 
-        globalThis.__AUDELY_NATIVE_NOTIFICATION = NativeNotification;
+        globalThis.__VIICORD_NATIVE_NOTIFICATION = NativeNotification;
 
-        const AudelyNotification = function(title, options) {
+        const ViiCordNotification = function(title, options) {
           let nextOptions = options;
 
           try {
             const pending =
-              globalThis.__AUDELY_PENDING_MESSAGE;
+              globalThis.__VIICORD_PENDING_MESSAGE;
             const age = pending
               ? Date.now() - Number(pending.at || 0)
               : Number.POSITIVE_INFINITY;
@@ -771,8 +771,8 @@ function buildRendererCode(payload) {
               pending &&
               age >= 0 &&
               age <= 4000 &&
-              globalThis.__AUDELY_SAFE_SOUNDS &&
-              globalThis.__AUDELY_SAFE_SOUNDS.message1
+              globalThis.__VIICORD_SAFE_SOUNDS &&
+              globalThis.__VIICORD_SAFE_SOUNDS.message1
             ) {
               nextOptions = Object.assign(
                 {},
@@ -785,7 +785,7 @@ function buildRendererCode(payload) {
               trace("WEB_NOTIFICATION_SILENCED");
 
               if (!pending.handled) {
-                audelyConsumePendingMessage(
+                viicordConsumePendingMessage(
                   "WebNotification"
                 );
               }
@@ -805,25 +805,25 @@ function buildRendererCode(payload) {
 
         try {
           Object.setPrototypeOf(
-            AudelyNotification,
+            ViiCordNotification,
             NativeNotification
           );
         } catch {}
 
         try {
-          AudelyNotification.prototype =
+          ViiCordNotification.prototype =
             NativeNotification.prototype;
         } catch {}
 
-        AudelyNotification.__AUDELY_NOTIFICATION_WRAPPED = true;
-        AudelyNotification.__AUDELY_NATIVE =
+        ViiCordNotification.__VIICORD_NOTIFICATION_WRAPPED = true;
+        ViiCordNotification.__VIICORD_NATIVE =
           NativeNotification;
 
         try {
-          globalThis.Notification = AudelyNotification;
+          globalThis.Notification = ViiCordNotification;
         } catch {}
 
-        if (globalThis.Notification !== AudelyNotification) {
+        if (globalThis.Notification !== ViiCordNotification) {
           try {
             Object.defineProperty(
               globalThis,
@@ -831,17 +831,17 @@ function buildRendererCode(payload) {
               {
                 configurable: true,
                 writable: true,
-                value: AudelyNotification
+                value: ViiCordNotification
               }
             );
           } catch {}
         }
 
-        if (globalThis.Notification !== AudelyNotification) {
+        if (globalThis.Notification !== ViiCordNotification) {
           return false;
         }
 
-        globalThis.__AUDELY_NOTIFICATION_PATCHED = true;
+        globalThis.__VIICORD_NOTIFICATION_PATCHED = true;
         trace("WEB_NOTIFICATION_PATCHED");
         return true;
       } catch (error) {
@@ -853,7 +853,7 @@ function buildRendererCode(payload) {
       }
     };
 
-    const audelyFindWebAudioSoundClass = webpackRequire => {
+    const viicordFindWebAudioSoundClass = webpackRequire => {
       if (!webpackRequire || !webpackRequire.c) return null;
 
       let modules = [];
@@ -867,7 +867,7 @@ function buildRendererCode(payload) {
         if (!exportsValue) continue;
 
         for (
-          const candidate of audelyExportObjects(
+          const candidate of viicordExportObjects(
             exportsValue,
             4
           )
@@ -893,27 +893,27 @@ function buildRendererCode(payload) {
       return null;
     };
 
-    const audelyPatchWebAudioSound = webpackRequire => {
+    const viicordPatchWebAudioSound = webpackRequire => {
       try {
-        if (globalThis.__AUDELY_WEBAUDIO_PATCHED) {
+        if (globalThis.__VIICORD_WEBAUDIO_PATCHED) {
           return true;
         }
 
         const found =
-          audelyFindWebAudioSoundClass(webpackRequire);
+          viicordFindWebAudioSoundClass(webpackRequire);
 
         if (!found || !found.cls) return false;
 
         const protoValue = found.cls.prototype;
         const patched =
-          audelyPatchSoundPrototype(protoValue) ||
+          viicordPatchSoundPrototype(protoValue) ||
           Boolean(
             protoValue &&
-            protoValue.__AUDELY_MESSAGE_SOUND_PATCHED
+            protoValue.__VIICORD_MESSAGE_SOUND_PATCHED
           );
 
         if (patched) {
-          globalThis.__AUDELY_WEBAUDIO_PATCHED = true;
+          globalThis.__VIICORD_WEBAUDIO_PATCHED = true;
           trace(
             "DISCORD_WEBAUDIO_PATCHED source=cache module=" +
             String(found.moduleId)
@@ -927,8 +927,8 @@ function buildRendererCode(payload) {
       return false;
     };
 
-    const audelyPatchSoundPrototype = protoValue => {
-      if (!protoValue || protoValue.__AUDELY_MESSAGE_SOUND_PATCHED) return false;
+    const viicordPatchSoundPrototype = protoValue => {
+      if (!protoValue || protoValue.__VIICORD_MESSAGE_SOUND_PATCHED) return false;
 
       const methods = ["play", "loop", "playWithListener"];
       if (!methods.some(name => typeof protoValue[name] === "function")) {
@@ -940,16 +940,16 @@ function buildRendererCode(payload) {
       for (const methodName of methods) {
         const original = protoValue[methodName];
         if (typeof original !== "function") continue;
-        if (original.__AUDELY_WRAPPED) continue;
+        if (original.__VIICORD_WRAPPED) continue;
 
         const wrapped = function(...args) {
           const type = String(this && this.name || "");
-          const targetId = audelyMessageTypeToTarget(type);
+          const targetId = viicordMessageTypeToTarget(type);
 
           if (
             targetId &&
-            globalThis.__AUDELY_SAFE_SOUNDS &&
-            globalThis.__AUDELY_SAFE_SOUNDS[targetId]
+            globalThis.__VIICORD_SAFE_SOUNDS &&
+            globalThis.__VIICORD_SAFE_SOUNDS[targetId]
           ) {
             trace(
               "SOUNDUTILS_HIT type=" + type +
@@ -958,7 +958,7 @@ function buildRendererCode(payload) {
             );
 
             if (methodName === "playWithListener") {
-              return audelyPlayDirect(
+              return viicordPlayDirect(
                 targetId,
                 "SoundUtils:" + type,
                 false,
@@ -966,7 +966,7 @@ function buildRendererCode(payload) {
               );
             }
 
-            audelyPlayDirect(
+            viicordPlayDirect(
               targetId,
               "SoundUtils:" + type,
               methodName === "loop",
@@ -978,7 +978,7 @@ function buildRendererCode(payload) {
           return original.apply(this, args);
         };
 
-        wrapped.__AUDELY_WRAPPED = true;
+        wrapped.__VIICORD_WRAPPED = true;
 
         try {
           protoValue[methodName] = wrapped;
@@ -987,21 +987,21 @@ function buildRendererCode(payload) {
       }
 
       if (patchedAny) {
-        try { protoValue.__AUDELY_MESSAGE_SOUND_PATCHED = true; } catch {}
+        try { protoValue.__VIICORD_MESSAGE_SOUND_PATCHED = true; } catch {}
       }
 
       return patchedAny;
     };
 
-    const audelyPatchCreateSoundOwner = (owner, key) => {
+    const viicordPatchCreateSoundOwner = (owner, key) => {
       try {
         if (!owner || !key) return false;
 
         const originalCreateSound = owner[key];
         if (typeof originalCreateSound !== "function") return false;
 
-        if (originalCreateSound.__AUDELY_CREATE_SOUND_WRAPPED) {
-          globalThis.__AUDELY_SOUNDUTILS_PATCHED = true;
+        if (originalCreateSound.__VIICORD_CREATE_SOUND_WRAPPED) {
+          globalThis.__VIICORD_SOUNDUTILS_PATCHED = true;
           return true;
         }
 
@@ -1019,7 +1019,7 @@ function buildRendererCode(payload) {
           sample.constructor.prototype;
 
         if (sampleProto) {
-          audelyPatchSoundPrototype(sampleProto);
+          viicordPatchSoundPrototype(sampleProto);
         }
 
         const wrapped = function(...args) {
@@ -1031,14 +1031,14 @@ function buildRendererCode(payload) {
               instance.constructor &&
               instance.constructor.prototype;
 
-            if (protoValue) audelyPatchSoundPrototype(protoValue);
+            if (protoValue) viicordPatchSoundPrototype(protoValue);
           } catch {}
 
           return instance;
         };
 
-        wrapped.__AUDELY_CREATE_SOUND_WRAPPED = true;
-        wrapped.__AUDELY_NATIVE = originalCreateSound;
+        wrapped.__VIICORD_CREATE_SOUND_WRAPPED = true;
+        wrapped.__VIICORD_NATIVE = originalCreateSound;
 
         try {
           owner[key] = wrapped;
@@ -1046,7 +1046,7 @@ function buildRendererCode(payload) {
           return false;
         }
 
-        globalThis.__AUDELY_SOUNDUTILS_PATCHED = true;
+        globalThis.__VIICORD_SOUNDUTILS_PATCHED = true;
         trace("DISCORD_SOUNDUTILS_PATCHED key=" + String(key));
         return true;
       } catch (error) {
@@ -1055,30 +1055,30 @@ function buildRendererCode(payload) {
       }
     };
 
-    const audelyPatchPlaySoundOwner = (owner, key) => {
+    const viicordPatchPlaySoundOwner = (owner, key) => {
       try {
         if (!owner || !key) return false;
 
         const originalPlaySound = owner[key];
         if (typeof originalPlaySound !== "function") return false;
 
-        if (originalPlaySound.__AUDELY_PLAY_SOUND_WRAPPED) return true;
+        if (originalPlaySound.__VIICORD_PLAY_SOUND_WRAPPED) return true;
 
         const wrapped = function(...args) {
           const type = args.length ? String(args[0] || "") : "";
-          const targetId = audelyMessageTypeToTarget(type);
+          const targetId = viicordMessageTypeToTarget(type);
 
           if (
             targetId &&
-            globalThis.__AUDELY_SAFE_SOUNDS &&
-            globalThis.__AUDELY_SAFE_SOUNDS[targetId]
+            globalThis.__VIICORD_SAFE_SOUNDS &&
+            globalThis.__VIICORD_SAFE_SOUNDS[targetId]
           ) {
             trace(
               "PLAYSOUND_HIT type=" + type +
               " target=" + targetId
             );
 
-            audelyPlayDirect(
+            viicordPlayDirect(
               targetId,
               "playSound:" + type,
               false,
@@ -1090,8 +1090,8 @@ function buildRendererCode(payload) {
           return originalPlaySound.apply(this, args);
         };
 
-        wrapped.__AUDELY_PLAY_SOUND_WRAPPED = true;
-        wrapped.__AUDELY_NATIVE = originalPlaySound;
+        wrapped.__VIICORD_PLAY_SOUND_WRAPPED = true;
+        wrapped.__VIICORD_NATIVE = originalPlaySound;
 
         try {
           owner[key] = wrapped;
@@ -1106,7 +1106,7 @@ function buildRendererCode(payload) {
       }
     };
 
-    const audelyPatchSoundUtilsObject = objectValue => {
+    const viicordPatchSoundUtilsObject = objectValue => {
       try {
         if (!objectValue) return false;
 
@@ -1118,13 +1118,13 @@ function buildRendererCode(payload) {
         }
 
         if (
-          audelyPatchCreateSoundOwner(
+          viicordPatchCreateSoundOwner(
             objectValue,
             "createSound"
           )
         ) {
           if (typeof objectValue.playSound === "function") {
-            audelyPatchPlaySoundOwner(
+            viicordPatchPlaySoundOwner(
               objectValue,
               "playSound"
             );
@@ -1138,15 +1138,15 @@ function buildRendererCode(payload) {
       return false;
     };
 
-    const audelyPatchDesktopNotifications = objectValue => {
+    const viicordPatchDesktopNotifications = objectValue => {
       try {
         if (!objectValue || typeof objectValue.showNotification !== "function") {
           return false;
         }
 
         const original = objectValue.showNotification;
-        if (original.__AUDELY_DESKTOP_WRAPPED) {
-          globalThis.__AUDELY_DESKTOP_NOTIFICATION_PATCHED = true;
+        if (original.__VIICORD_DESKTOP_WRAPPED) {
+          globalThis.__VIICORD_DESKTOP_NOTIFICATION_PATCHED = true;
           return true;
         }
 
@@ -1159,15 +1159,15 @@ function buildRendererCode(payload) {
               if (!arg || typeof arg !== "object") continue;
               if (typeof arg.sound !== "string") continue;
 
-              const mapped = audelyMessageTypeToTarget(arg.sound);
+              const mapped = viicordMessageTypeToTarget(arg.sound);
               if (!mapped) continue;
 
               targetId = mapped;
               originalSound = arg.sound;
 
               if (
-                globalThis.__AUDELY_SAFE_SOUNDS &&
-                globalThis.__AUDELY_SAFE_SOUNDS[targetId]
+                globalThis.__VIICORD_SAFE_SOUNDS &&
+                globalThis.__VIICORD_SAFE_SOUNDS[targetId]
               ) {
                 // Disable Discord's own desktop notification sound, but keep
                 // the visual notification itself.
@@ -1178,8 +1178,8 @@ function buildRendererCode(payload) {
 
             if (
               targetId &&
-              globalThis.__AUDELY_SAFE_SOUNDS &&
-              globalThis.__AUDELY_SAFE_SOUNDS[targetId]
+              globalThis.__VIICORD_SAFE_SOUNDS &&
+              globalThis.__VIICORD_SAFE_SOUNDS[targetId]
             ) {
               trace(
                 "DESKTOP_NOTIFICATION_HIT sound=" +
@@ -1188,12 +1188,12 @@ function buildRendererCode(payload) {
               );
 
               if (
-                !audelyConsumePendingMessage(
+                !viicordConsumePendingMessage(
                   "DesktopNotification:" +
                   String(originalSound || "")
                 )
               ) {
-                audelyPlayDirect(
+                viicordPlayDirect(
                   targetId,
                   "DesktopNotification:" +
                   String(originalSound || ""),
@@ -1209,7 +1209,7 @@ function buildRendererCode(payload) {
           return original.apply(this, args);
         };
 
-        wrapped.__AUDELY_DESKTOP_WRAPPED = true;
+        wrapped.__VIICORD_DESKTOP_WRAPPED = true;
 
         try {
           objectValue.showNotification = wrapped;
@@ -1217,7 +1217,7 @@ function buildRendererCode(payload) {
           return false;
         }
 
-        globalThis.__AUDELY_DESKTOP_NOTIFICATION_PATCHED = true;
+        globalThis.__VIICORD_DESKTOP_NOTIFICATION_PATCHED = true;
         trace("DISCORD_DESKTOP_NOTIFICATION_PATCHED");
         return true;
       } catch (error) {
@@ -1226,15 +1226,15 @@ function buildRendererCode(payload) {
       }
     };
 
-    const audelyPatchWebAudioExports = (
+    const viicordPatchWebAudioExports = (
       exportsValue,
       moduleId
     ) => {
       try {
-        if (globalThis.__AUDELY_WEBAUDIO_PATCHED) return true;
+        if (globalThis.__VIICORD_WEBAUDIO_PATCHED) return true;
 
         for (
-          const candidate of audelyExportObjects(
+          const candidate of viicordExportObjects(
             exportsValue,
             4
           )
@@ -1250,13 +1250,13 @@ function buildRendererCode(payload) {
             typeof protoValue.ensureAudio === "function"
           ) {
             const patched =
-              audelyPatchSoundPrototype(protoValue) ||
+              viicordPatchSoundPrototype(protoValue) ||
               Boolean(
-                protoValue.__AUDELY_MESSAGE_SOUND_PATCHED
+                protoValue.__VIICORD_MESSAGE_SOUND_PATCHED
               );
 
             if (patched) {
-              globalThis.__AUDELY_WEBAUDIO_PATCHED = true;
+              globalThis.__VIICORD_WEBAUDIO_PATCHED = true;
               trace(
                 "DISCORD_WEBAUDIO_PATCHED source=factory module=" +
                 String(moduleId || "?")
@@ -1275,30 +1275,30 @@ function buildRendererCode(payload) {
       return false;
     };
 
-    const audelyPatchDesktopExports = (
+    const viicordPatchDesktopExports = (
       exportsValue,
       moduleId
     ) => {
       try {
         if (
-          globalThis.__AUDELY_DESKTOP_NOTIFICATION_PATCHED
+          globalThis.__VIICORD_DESKTOP_NOTIFICATION_PATCHED
         ) {
           return true;
         }
 
         for (
-          const candidate of audelyExportObjects(
+          const candidate of viicordExportObjects(
             exportsValue,
             4
           )
         ) {
           if (
-            audelyHasProps(
+            viicordHasProps(
               candidate,
               ["showNotification", "requestPermission"]
             )
           ) {
-            if (audelyPatchDesktopNotifications(candidate)) {
+            if (viicordPatchDesktopNotifications(candidate)) {
               trace(
                 "DISCORD_DESKTOP_PATCHED source=factory module=" +
                 String(moduleId || "?")
@@ -1317,22 +1317,22 @@ function buildRendererCode(payload) {
       return false;
     };
 
-    const audelyPatchSoundUtilsExports = (
+    const viicordPatchSoundUtilsExports = (
       exportsValue,
       moduleId
     ) => {
       try {
-        if (globalThis.__AUDELY_SOUNDUTILS_PATCHED) {
+        if (globalThis.__VIICORD_SOUNDUTILS_PATCHED) {
           return true;
         }
 
         for (
-          const candidate of audelyExportObjects(
+          const candidate of viicordExportObjects(
             exportsValue,
             4
           )
         ) {
-          if (audelyPatchSoundUtilsObject(candidate)) {
+          if (viicordPatchSoundUtilsObject(candidate)) {
             trace(
               "DISCORD_SOUNDUTILS_PATCHED source=factory module=" +
               String(moduleId || "?")
@@ -1350,9 +1350,9 @@ function buildRendererCode(payload) {
       return false;
     };
 
-    const audelyFactoryKinds = factory => {
+    const viicordFactoryKinds = factory => {
       const kinds = [];
-      const source = audelyFunctionSource(factory);
+      const source = viicordFunctionSource(factory);
       if (!source) return kinds;
 
       if (source.includes("could not play audio:")) {
@@ -1377,7 +1377,7 @@ function buildRendererCode(payload) {
       return kinds;
     };
 
-    const audelyApplyPostFactoryPatch = (
+    const viicordApplyPostFactoryPatch = (
       kinds,
       moduleValue,
       moduleId
@@ -1392,42 +1392,42 @@ function buildRendererCode(payload) {
       if (!exportsValue) return;
 
       if (kinds.includes("webaudio")) {
-        audelyPatchWebAudioExports(
+        viicordPatchWebAudioExports(
           exportsValue,
           moduleId
         );
       }
 
       if (kinds.includes("desktop")) {
-        audelyPatchDesktopExports(
+        viicordPatchDesktopExports(
           exportsValue,
           moduleId
         );
       }
 
       if (kinds.includes("soundutils")) {
-        audelyPatchSoundUtilsExports(
+        viicordPatchSoundUtilsExports(
           exportsValue,
           moduleId
         );
       }
     };
 
-    const audelyWrapFactory = (
+    const viicordWrapFactory = (
       moduleId,
       factory,
       forcedKinds
     ) => {
       if (typeof factory !== "function") return factory;
 
-      if (factory.__AUDELY_SAFE_FACTORY_WRAPPED) {
+      if (factory.__VIICORD_SAFE_FACTORY_WRAPPED) {
         return factory;
       }
 
       const kinds =
         Array.isArray(forcedKinds) && forcedKinds.length
           ? forcedKinds
-          : audelyFactoryKinds(factory);
+          : viicordFactoryKinds(factory);
 
       if (!kinds.length) return factory;
 
@@ -1437,7 +1437,7 @@ function buildRendererCode(payload) {
         const result = original.apply(this, args);
 
         try {
-          audelyApplyPostFactoryPatch(
+          viicordApplyPostFactoryPatch(
             kinds,
             args[0],
             moduleId
@@ -1484,8 +1484,8 @@ function buildRendererCode(payload) {
         }
       } catch {}
 
-      wrapped.__AUDELY_SAFE_FACTORY_WRAPPED = true;
-      wrapped.__AUDELY_SAFE_FACTORY_KINDS =
+      wrapped.__VIICORD_SAFE_FACTORY_WRAPPED = true;
+      wrapped.__VIICORD_SAFE_FACTORY_KINDS =
         kinds.join(",");
 
       trace(
@@ -1498,7 +1498,7 @@ function buildRendererCode(payload) {
       return wrapped;
     };
 
-    const audelyPatchLoadedModuleCache = webpackRequire => {
+    const viicordPatchLoadedModuleCache = webpackRequire => {
       if (!webpackRequire || !webpackRequire.c) return;
 
       let entries = [];
@@ -1516,50 +1516,50 @@ function buildRendererCode(payload) {
 
         if (!exportsValue) continue;
 
-        if (!globalThis.__AUDELY_WEBAUDIO_PATCHED) {
-          audelyPatchWebAudioExports(
+        if (!globalThis.__VIICORD_WEBAUDIO_PATCHED) {
+          viicordPatchWebAudioExports(
             exportsValue,
             moduleId
           );
         }
 
         if (
-          !globalThis.__AUDELY_DESKTOP_NOTIFICATION_PATCHED
+          !globalThis.__VIICORD_DESKTOP_NOTIFICATION_PATCHED
         ) {
-          audelyPatchDesktopExports(
+          viicordPatchDesktopExports(
             exportsValue,
             moduleId
           );
         }
 
-        if (!globalThis.__AUDELY_SOUNDUTILS_PATCHED) {
-          audelyPatchSoundUtilsExports(
+        if (!globalThis.__VIICORD_SOUNDUTILS_PATCHED) {
+          viicordPatchSoundUtilsExports(
             exportsValue,
             moduleId
           );
         }
 
         if (
-          globalThis.__AUDELY_WEBAUDIO_PATCHED &&
-          globalThis.__AUDELY_DESKTOP_NOTIFICATION_PATCHED &&
-          globalThis.__AUDELY_SOUNDUTILS_PATCHED
+          globalThis.__VIICORD_WEBAUDIO_PATCHED &&
+          globalThis.__VIICORD_DESKTOP_NOTIFICATION_PATCHED &&
+          globalThis.__VIICORD_SOUNDUTILS_PATCHED
         ) {
           break;
         }
       }
     };
 
-    const audelyInstallFactoryObservers = webpackRequire => {
+    const viicordInstallFactoryObservers = webpackRequire => {
       if (!webpackRequire) return;
 
       // Always inspect already-loaded modules. This does not execute anything.
-      audelyPatchLoadedModuleCache(webpackRequire);
+      viicordPatchLoadedModuleCache(webpackRequire);
 
       // Existing but not-yet-executed factories are wrapped ONCE. Discord
       // remains responsible for deciding when they are executed.
       if (
         webpackRequire.m &&
-        !globalThis.__AUDELY_FACTORY_TABLE_WRAPPED
+        !globalThis.__VIICORD_FACTORY_TABLE_WRAPPED
       ) {
         let entries = [];
         try {
@@ -1570,7 +1570,7 @@ function buildRendererCode(payload) {
 
         for (const [moduleId, factory] of entries) {
           const wrapped =
-            audelyWrapFactory(
+            viicordWrapFactory(
               moduleId,
               factory
             );
@@ -1583,7 +1583,7 @@ function buildRendererCode(payload) {
           }
         }
 
-        globalThis.__AUDELY_FACTORY_TABLE_WRAPPED = true;
+        globalThis.__VIICORD_FACTORY_TABLE_WRAPPED = true;
 
         trace(
           "FACTORY_TABLE_READY matched=" +
@@ -1593,9 +1593,9 @@ function buildRendererCode(payload) {
       }
     };
 
-    const audelyInstallDiscordSoundLayer = () => {
+    const viicordInstallDiscordSoundLayer = () => {
       const webpackRequire =
-        audelyGetWebpackRequire();
+        viicordGetWebpackRequire();
 
       if (!webpackRequire) {
         trace(
@@ -1604,33 +1604,33 @@ function buildRendererCode(payload) {
 
         return {
           soundUtils: Boolean(
-            globalThis.__AUDELY_SOUNDUTILS_PATCHED
+            globalThis.__VIICORD_SOUNDUTILS_PATCHED
           ),
           desktop: Boolean(
-            globalThis.__AUDELY_DESKTOP_NOTIFICATION_PATCHED
+            globalThis.__VIICORD_DESKTOP_NOTIFICATION_PATCHED
           ),
           dispatcher: false,
           webAudio: Boolean(
-            globalThis.__AUDELY_WEBAUDIO_PATCHED
+            globalThis.__VIICORD_WEBAUDIO_PATCHED
           ),
           notification: false
         };
       }
 
-      audelyInstallFactoryObservers(
+      viicordInstallFactoryObservers(
         webpackRequire
       );
 
       const status = {
         soundUtils: Boolean(
-          globalThis.__AUDELY_SOUNDUTILS_PATCHED
+          globalThis.__VIICORD_SOUNDUTILS_PATCHED
         ),
         desktop: Boolean(
-          globalThis.__AUDELY_DESKTOP_NOTIFICATION_PATCHED
+          globalThis.__VIICORD_DESKTOP_NOTIFICATION_PATCHED
         ),
         dispatcher: false,
         webAudio: Boolean(
-          globalThis.__AUDELY_WEBAUDIO_PATCHED
+          globalThis.__VIICORD_WEBAUDIO_PATCHED
         ),
         notification: false
       };
@@ -1648,7 +1648,7 @@ function buildRendererCode(payload) {
       return status;
     };
 
-    globalThis.__AUDELY_INSTALL_DISCORD_LAYER = audelyInstallDiscordSoundLayer;
+    globalThis.__VIICORD_INSTALL_DISCORD_LAYER = viicordInstallDiscordSoundLayer;
 
     // Patch only factories from newly arriving chunks, before Discord registers
     // them. We do not execute those modules and we do not run a full rescan.
@@ -1659,7 +1659,7 @@ function buildRendererCode(payload) {
       if (
         chunks &&
         typeof chunks.push === "function" &&
-        !chunks.__AUDELY_PUSH_WRAPPED
+        !chunks.__VIICORD_PUSH_WRAPPED
       ) {
         const nativeChunkPush =
           chunks.push.bind(chunks);
@@ -1681,7 +1681,7 @@ function buildRendererCode(payload) {
                 of Object.entries(modules)
               ) {
                 const wrapped =
-                  audelyWrapFactory(
+                  viicordWrapFactory(
                     moduleId,
                     factory
                   );
@@ -1704,12 +1704,12 @@ function buildRendererCode(payload) {
         };
 
         try {
-          wrappedChunkPush.__AUDELY_NATIVE =
+          wrappedChunkPush.__VIICORD_NATIVE =
             nativeChunkPush;
         } catch {}
 
         chunks.push = wrappedChunkPush;
-        chunks.__AUDELY_PUSH_WRAPPED = true;
+        chunks.__VIICORD_PUSH_WRAPPED = true;
 
         trace(
           "WEBPACK_CHUNK_OBSERVER_READY forcedRequires=0"
@@ -1717,17 +1717,17 @@ function buildRendererCode(payload) {
       }
     } catch {}
 
-    const initialDiscordLayer = audelyInstallDiscordSoundLayer();
+    const initialDiscordLayer = viicordInstallDiscordSoundLayer();
 
-    if (globalThis.__AUDELY_SAFE_PATCHED) {
+    if (globalThis.__VIICORD_SAFE_PATCHED) {
       trace(
         "MAP_UPDATED targets=" +
-        Object.keys(globalThis.__AUDELY_SAFE_SOUNDS).join(",") +
+        Object.keys(globalThis.__VIICORD_SAFE_SOUNDS).join(",") +
         " needles=" +
-        Object.keys(globalThis.__AUDELY_SAFE_NEEDLES).length
+        Object.keys(globalThis.__VIICORD_SAFE_NEEDLES).length
       );
       return (
-        "Audely map updated; soundUtils=" +
+        "ViiCord map updated; soundUtils=" +
         Boolean(initialDiscordLayer && initialDiscordLayer.soundUtils) +
         "; desktopNotifications=" +
         Boolean(initialDiscordLayer && initialDiscordLayer.desktop) +
@@ -1743,7 +1743,7 @@ function buildRendererCode(payload) {
     const proto = globalThis.HTMLMediaElement && globalThis.HTMLMediaElement.prototype;
     if (!proto) {
       trace("ERROR HTMLMediaElement unavailable");
-      return "Audely: HTMLMediaElement unavailable";
+      return "ViiCord: HTMLMediaElement unavailable";
     }
 
     const descriptor = Object.getOwnPropertyDescriptor(proto, "src");
@@ -1752,13 +1752,13 @@ function buildRendererCode(payload) {
 
     if (!descriptor || typeof descriptor.set !== "function" || typeof descriptor.get !== "function") {
       trace("ERROR src descriptor unavailable");
-      return "Audely: src descriptor unavailable";
+      return "ViiCord: src descriptor unavailable";
     }
 
     const makeBlobUrl = sound => {
       const id = String(sound.target || "");
       const sha = String(sound.sha256 || "");
-      const cached = globalThis.__AUDELY_BLOB_CACHE[id];
+      const cached = globalThis.__VIICORD_BLOB_CACHE[id];
 
       if (cached && cached.sha256 === sha && cached.url) {
         return cached.url;
@@ -1771,7 +1771,7 @@ function buildRendererCode(payload) {
       const blob = new Blob([bytes], { type: String(sound.mime || "audio/mpeg") });
       const url = URL.createObjectURL(blob);
 
-      globalThis.__AUDELY_BLOB_CACHE[id] = { sha256: sha, url };
+      globalThis.__VIICORD_BLOB_CACHE[id] = { sha256: sha, url };
       return url;
     };
 
@@ -1779,10 +1779,10 @@ function buildRendererCode(payload) {
       if (typeof value !== "string") return null;
       const lower = value.toLowerCase();
 
-      for (const [needle, targetId] of Object.entries(globalThis.__AUDELY_SAFE_NEEDLES || {})) {
+      for (const [needle, targetId] of Object.entries(globalThis.__VIICORD_SAFE_NEEDLES || {})) {
         if (!lower.includes(needle)) continue;
 
-        const sound = globalThis.__AUDELY_SAFE_SOUNDS[targetId];
+        const sound = globalThis.__VIICORD_SAFE_SOUNDS[targetId];
         if (sound) return { needle, sound };
       }
       return null;
@@ -1796,14 +1796,14 @@ function buildRendererCode(payload) {
     };
 
     const clearActive = element => {
-      try { delete element.__AUDELY_SAFE_ACTIVE; } catch {}
+      try { delete element.__VIICORD_SAFE_ACTIVE; } catch {}
     };
 
     const armFallback = (element, originalSrc, customSrc, sound, needle) => {
       const previousVolume = Number.isFinite(element.volume) ? element.volume : 1;
       const token = Math.random().toString(36).slice(2);
 
-      element.__AUDELY_SAFE_ACTIVE = {
+      element.__VIICORD_SAFE_ACTIVE = {
         token,
         originalSrc,
         customSrc,
@@ -1818,7 +1818,7 @@ function buildRendererCode(payload) {
       };
 
       const getActive = () => {
-        const active = element.__AUDELY_SAFE_ACTIVE;
+        const active = element.__VIICORD_SAFE_ACTIVE;
         return active && active.token === token ? active : null;
       };
 
@@ -1947,7 +1947,7 @@ function buildRendererCode(payload) {
 
         let blobUrl;
         try {
-          blobUrl = makeBlobUrl(globalThis.__AUDELY_PICK(match.sound));
+          blobUrl = makeBlobUrl(globalThis.__VIICORD_PICK(match.sound));
         } catch (error) {
           trace(
             "BLOB_ERROR target=" + String(match.sound.target || "") +
@@ -2019,7 +2019,7 @@ function buildRendererCode(payload) {
 
     // V1.3.7:
     // Discord peut creer/precharger un Audio(src) AVANT que le setter src
-    // d'Audely soit installe. Dans ce cas aucune affectation src ne repasse
+    // d'ViiCord soit installe. Dans ce cas aucune affectation src ne repasse
     // par notre hook : seul play() arrive plus tard.
     //
     // On verifie donc aussi la source juste avant la lecture. Cela couvre les
@@ -2027,7 +2027,7 @@ function buildRendererCode(payload) {
     if (typeof nativePlay === "function") {
       proto.play = function(...args) {
         try {
-          let active = this.__AUDELY_SAFE_ACTIVE;
+          let active = this.__VIICORD_SAFE_ACTIVE;
 
           if (!active || active.fallingBack) {
             const existingSrc = getExistingMediaSrc(this);
@@ -2055,7 +2055,7 @@ function buildRendererCode(payload) {
                     " source=preloaded"
                   );
 
-                  active = this.__AUDELY_SAFE_ACTIVE;
+                  active = this.__VIICORD_SAFE_ACTIVE;
                 }
               }
               else if (looksLikeSound(existingSrc)) {
@@ -2066,7 +2066,7 @@ function buildRendererCode(payload) {
             }
           }
 
-          active = this.__AUDELY_SAFE_ACTIVE;
+          active = this.__VIICORD_SAFE_ACTIVE;
           if (active && !active.fallingBack) {
             if (!active.playRequested) {
               active.playRequested = true;
@@ -2084,15 +2084,15 @@ function buildRendererCode(payload) {
       };
     }
 
-    globalThis.__AUDELY_SAFE_PATCHED = true;
+    globalThis.__VIICORD_SAFE_PATCHED = true;
 
-    const finalDiscordLayer = audelyInstallDiscordSoundLayer();
+    const finalDiscordLayer = viicordInstallDiscordSoundLayer();
 
     trace(
       "HOOK_ACTIVE safe=true transport=blob globalAudio=false targets=" +
-      Object.keys(globalThis.__AUDELY_SAFE_SOUNDS).join(",") +
+      Object.keys(globalThis.__VIICORD_SAFE_SOUNDS).join(",") +
       " needles=" +
-      Object.keys(globalThis.__AUDELY_SAFE_NEEDLES).length +
+      Object.keys(globalThis.__VIICORD_SAFE_NEEDLES).length +
       " soundUtils=" +
       Boolean(finalDiscordLayer && finalDiscordLayer.soundUtils) +
       " desktopNotifications=" +
@@ -2106,7 +2106,7 @@ function buildRendererCode(payload) {
     );
 
     return (
-      "Audely safe blob audio hook active; soundUtils=" +
+      "ViiCord safe blob audio hook active; soundUtils=" +
       Boolean(finalDiscordLayer && finalDiscordLayer.soundUtils) +
       "; desktopNotifications=" +
       Boolean(finalDiscordLayer && finalDiscordLayer.desktop) +
@@ -2153,24 +2153,24 @@ function getContentsUrl(wc) {
 
 // V1.3.7 GAME MODE:
 // Discord peut créer d'autres WebContents quand un jeu / l'overlay est actif.
-// Avant, Audely ne suivait que les BrowserWindow. On attache désormais le hook
+// Avant, ViiCord ne suivait que les BrowserWindow. On attache désormais le hook
 // à TOUS les WebContents Electron existants et futurs.
 function scheduleInject(wc, delay = 250) {
   try {
     if (!wc || wc.isDestroyed()) return;
 
-    if (wc.__AUDELY_SAFE_INJECT_TIMER) {
+    if (wc.__VIICORD_SAFE_INJECT_TIMER) {
       try {
         clearTimeout(
-          wc.__AUDELY_SAFE_INJECT_TIMER
+          wc.__VIICORD_SAFE_INJECT_TIMER
         );
       } catch {}
     }
 
-    wc.__AUDELY_SAFE_INJECT_TIMER =
+    wc.__VIICORD_SAFE_INJECT_TIMER =
       setTimeout(() => {
         try {
-          wc.__AUDELY_SAFE_INJECT_TIMER = null;
+          wc.__VIICORD_SAFE_INJECT_TIMER = null;
           inject(wc);
         } catch {}
       }, delay);
@@ -2181,8 +2181,8 @@ function attachContents(wc) {
   try {
     if (!wc || wc.isDestroyed()) return;
 
-    if (!wc.__AUDELY_SAFE_ATTACHED) {
-      wc.__AUDELY_SAFE_ATTACHED = true;
+    if (!wc.__VIICORD_SAFE_ATTACHED) {
+      wc.__VIICORD_SAFE_ATTACHED = true;
 
       log(
         `attach webContents id=${String(wc.id || "?")} ` +
@@ -2198,7 +2198,7 @@ function attachContents(wc) {
 
           const message =
             strings.find(
-              v => v.includes("[AudelySafe]")
+              v => v.includes("[ViiCordSafe]")
             );
 
           if (message) {

@@ -67,9 +67,9 @@ Section "Install"
   SetOutPath "$INSTDIR"
 
   ; Les dossiers de réglages (%APPDATA%\ViiCord) sont créés par l'application elle-même : elle y migre aussi
-  ; l'ancien dossier « Audely » sans rien perdre (voir AppPaths.DataDir). Rien à créer ici.
+  ; l'ancien dossier « ViiCord » sans rien perdre (voir AppPaths.DataDir). Rien à créer ici.
 
-  ; Legacy VERIS MOD / Audely compatibility : nettoyage de l'ancienne installation (ancien nom).
+  ; Legacy VERIS MOD / ViiCord compatibility : nettoyage de l'ancienne installation (ancien nom).
   nsExec::Exec 'taskkill /F /IM VerisMod.exe'
   Pop $0
   Delete "$DESKTOP\VERIS MOD.lnk"
@@ -110,11 +110,7 @@ SectionEnd
 Section "Uninstall"
   SetShellVarContext current
 
-  ; Dossier des réglages : ViiCord (ou l'ancien dossier Audely si la migration n'a pas encore eu lieu).
   StrCpy $R8 "$APPDATA\ViiCord"
-  ${IfNot} ${FileExists} "$R8\install-state.json"
-    StrCpy $R8 "$APPDATA\Audely"
-  ${EndIf}
 
   ; Si ViiCord est encore actif dans Discord, on prévient (le hook doit être retiré par l'appli).
   StrCpy $R9 "0"
@@ -168,12 +164,7 @@ Section "Uninstall"
   ${If} $R9 != "1"
   ${AndIf} ${FileExists} "$R8\*.*"
     MessageBox MB_YESNO|MB_ICONQUESTION "Supprimer aussi tes réglages et sons perso (dossier ViiCord) ?$\r$\n$\r$\nChoisis Non si tu comptes réinstaller ViiCord plus tard." /SD IDNO IDNO keepdata
-    ; Legacy Audely compatibility : « Audely » est un simple lien vers « ViiCord » après la migration.
-    RMDir "$APPDATA\Audely"
-    RMDir /r "$APPDATA\ViiCord"
-    ${If} ${FileExists} "$APPDATA\Audely\*.*"
-      RMDir /r "$APPDATA\Audely"
-    ${EndIf}
+    RMDir /r "$R8"
     keepdata:
   ${EndIf}
 SectionEnd

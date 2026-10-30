@@ -3,11 +3,6 @@ Set-Location $env:TEMP
 
 $dest = Join-Path $env:LOCALAPPDATA 'Programs\ViiCord'
 $data = Join-Path $env:APPDATA 'ViiCord'
-# Legacy Audely compatibility : avant la migration, les reglages sont encore dans l'ancien dossier.
-if (-not (Test-Path (Join-Path $data 'install-state.json'))) {
-  $old = Join-Path $env:APPDATA 'Audely'
-  if (Test-Path $old) { $data = $old }
-}
 $key  = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\ViiCord'
 
 Write-Host ''
@@ -52,9 +47,6 @@ if (-not $hookActive -and (Test-Path $data)) {
   Write-Host ''
   $r = Read-Host '  Supprimer aussi tes reglages et sons perso (dossier ViiCord) ? (o/N)'
   if ($r -match '^[oOyY]') {
-    # « Audely » n'est plus qu'un lien vers « ViiCord » apres la migration : on retire le lien sans suivre sa cible.
-    $link = Join-Path $env:APPDATA 'Audely'
-    if ((Test-Path $link) -and ((Get-Item $link -Force).Attributes -band [IO.FileAttributes]::ReparsePoint)) { cmd /c rmdir `"$link`" | Out-Null }
     Remove-Item -LiteralPath $data -Recurse -Force -ErrorAction SilentlyContinue
     Write-Host '  Reglages supprimes.' -ForegroundColor Green
   } else {

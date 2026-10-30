@@ -294,17 +294,17 @@ public static class LibraryService
     // Voix VIIRUS : une phrase par catégorie (le 4e champ est la catégorie, donc la carte, où elle apparaît).
     private static readonly (string Id, string Name, string File, string Category)[] Builtins =
     {
-        ("builtin:veris_message",   "Voix VIIRUS • Nouveau message",     "Viirus_Message.wav",      "message1"),
-        ("builtin:veris_join",      "Voix VIIRUS • Utilisateur rejoint", "Viirus_Rejoint.wav",      "user_join"),
-        ("builtin:veris_leave",     "Voix VIIRUS • Utilisateur parti",   "Viirus_Parti.wav",        "user_leave"),
-        ("builtin:veris_calling",   "Voix VIIRUS • Appel en cours",      "Viirus_Appel_Sortant.wav","call_calling"),
-        ("builtin:veris_ringing",   "Voix VIIRUS • Appel entrant",       "Viirus_Appel_Entrant.wav","call_ringing"),
-        ("builtin:veris_reconnect", "Voix VIIRUS • Connexion en cours",  "Viirus_Connexion.wav",    "reconnect"),
-        ("builtin:veris_disconnect","Voix VIIRUS • Déconnexion",         "Viirus_Deconnexion.wav",  "disconnect"),
-        ("builtin:veris_mute",      "Voix VIIRUS • Micro coupé",         "Viirus_Micro_Coupe.wav",  "mute"),
-        ("builtin:veris_unmute",    "Voix VIIRUS • Micro démuté",        "Viirus_Micro_Active.wav", "unmute"),
-        ("builtin:veris_deafen",    "Voix VIIRUS • Casque coupé",        "Viirus_Casque_Coupe.wav", "deafen"),
-        ("builtin:veris_undeafen",  "Voix VIIRUS • Son rétabli",         "Viirus_Casque_Active.wav","undeafen"),
+        ("builtin:viirus_message",   "Voix VIIRUS • Nouveau message",     "Viirus_Message.wav",      "message1"),
+        ("builtin:viirus_join",      "Voix VIIRUS • Utilisateur rejoint", "Viirus_Rejoint.wav",      "user_join"),
+        ("builtin:viirus_leave",     "Voix VIIRUS • Utilisateur parti",   "Viirus_Parti.wav",        "user_leave"),
+        ("builtin:viirus_calling",   "Voix VIIRUS • Appel en cours",      "Viirus_Appel_Sortant.wav","call_calling"),
+        ("builtin:viirus_ringing",   "Voix VIIRUS • Appel entrant",       "Viirus_Appel_Entrant.wav","call_ringing"),
+        ("builtin:viirus_reconnect", "Voix VIIRUS • Connexion en cours",  "Viirus_Connexion.wav",    "reconnect"),
+        ("builtin:viirus_disconnect","Voix VIIRUS • Déconnexion",         "Viirus_Deconnexion.wav",  "disconnect"),
+        ("builtin:viirus_mute",      "Voix VIIRUS • Micro coupé",         "Viirus_Micro_Coupe.wav",  "mute"),
+        ("builtin:viirus_unmute",    "Voix VIIRUS • Micro démuté",        "Viirus_Micro_Active.wav", "unmute"),
+        ("builtin:viirus_deafen",    "Voix VIIRUS • Casque coupé",        "Viirus_Casque_Coupe.wav", "deafen"),
+        ("builtin:viirus_undeafen",  "Voix VIIRUS • Son rétabli",         "Viirus_Casque_Active.wav","undeafen"),
     };
 
     /// <summary>Le profil « Voix VIIRUS » : les 11 phrases du robot, une par événement.</summary>

@@ -52,67 +52,25 @@ public static class AppPaths
         catch { return false; }
     }
 
-    // Legacy Audely compatibility : migration de %APPDATA%\Audely vers %APPDATA%\ViiCord.
-    // - On DÉPLACE le dossier (rien n'est copié, donc rien n'est perdu ni dupliqué), puis on laisse
-    //   « Audely » comme lien (jonction) vers « ViiCord » : le hook déjà posé dans Discord, qui pointe encore
-    //   vers l'ancien chemin, continue de fonctionner sans qu'il faille toucher aux fichiers de Discord.
-    // - Au moindre échec (fichiers verrouillés par Discord, jonction refusée…), tout est remis en place et
-    //   ViiCord continue d'utiliser l'ancien dossier ; la migration est retentée au lancement suivant.
+    // Legacy Audely compatibility : reprise des reglages de l'ancienne version (%APPDATA%\Audely).
+    // Le dossier est DEPLACE (rien n'est copie ni perdu). Au moindre echec (fichiers verrouilles...),
+    // l'ancien dossier reste utilise et la migration est retentee au lancement suivant.
     private static string ResolveDataDir()
     {
         string roaming = Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData);
         string current = Path.Combine(roaming, "ViiCord");
-        string legacy = Path.Combine(roaming, "Audely");
+        string legacy = Path.Combine(roaming, "Audely");   // Legacy Audely compatibility
 
         try
         {
-            if (HasData(current)) return current;                    // déjà migré (ou nouvelle installation)
-            if (!HasData(legacy) || IsLink(legacy)) return current;  // rien à migrer
+            if (HasData(current)) return current;
+            if (!HasData(legacy) || IsLink(legacy)) return current;
 
-            return TryMigrate(legacy, current) ? current : legacy;
+            if (Directory.Exists(current)) Directory.Delete(current, recursive: true);   // dossier vide
+            try { Directory.Move(legacy, current); return current; }
+            catch { return legacy; }
         }
         catch { return HasData(legacy) && !IsLink(legacy) ? legacy : current; }
-    }
-
-    private static bool TryMigrate(string legacy, string current)
-    {
-        bool moved = false;
-        try
-        {
-            if (Directory.Exists(current)) Directory.Delete(current, recursive: true);   // dossier vide créé à l'installation
-
-            Directory.Move(legacy, current);
-            moved = true;
-
-            // Jonction (sans droits administrateur) : l'ancien chemin désigne désormais le nouveau dossier.
-            var psi = new ProcessStartInfo("cmd.exe", $"/c mklink /J \"{legacy}\" \"{current}\"")
-            {
-                CreateNoWindow = true,
-                UseShellExecute = false,
-                RedirectStandardOutput = true,
-                RedirectStandardError = true,
-            };
-            using (Process? proc = Process.Start(psi))
-            {
-                proc?.WaitForExit(8000);
-            }
-
-            bool linkOk = Directory.Exists(legacy) && IsLink(legacy) &&
-                          DataMarkers.Any(m => File.Exists(Path.Combine(legacy, m))) &&
-                          DataMarkers.Where(m => File.Exists(Path.Combine(current, m)))
-                                     .All(m => File.Exists(Path.Combine(legacy, m)));
-            if (linkOk) return true;
-        }
-        catch { /* on remet tout en place ci-dessous */ }
-
-        // Échec : retour à l'état d'origine.
-        try
-        {
-            if (Directory.Exists(legacy) && IsLink(legacy)) Directory.Delete(legacy);    // supprime seulement le lien
-            if (moved && !Directory.Exists(legacy) && Directory.Exists(current)) Directory.Move(current, legacy);
-        }
-        catch { }
-        return false;
     }
 
     public static string ConfigPath => Path.Combine(DataDir, "runtime-config.json");

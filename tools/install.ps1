@@ -23,7 +23,7 @@ try {
 
   # 2. Dossiers : programme + donnees (les reglages existants sont conserves)
   New-Item -ItemType Directory -Force -Path $dest | Out-Null
-  # (les reglages dans %APPDATA%\ViiCord sont crees par l'application, qui migre aussi l'ancien dossier Audely)
+  # (les reglages dans %APPDATA%\ViiCord sont crees par l'application)
 
   # 3. Copie de l'application (exe + sons + mascotte)
   Get-ChildItem -LiteralPath $dest -Force -ErrorAction SilentlyContinue |

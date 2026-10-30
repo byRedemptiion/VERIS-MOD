@@ -39,8 +39,8 @@
     <Resource Include="Assets\Fonts\*.ttf" />
 
     <!-- JS du hook : copié tel quel depuis V1.3.7, embarqué dans l'exécutable -->
-    <EmbeddedResource Include="Js\audely_runtime_loader.js" LogicalName="ViiCord.Js.audely_runtime_loader.js" />
-    <EmbeddedResource Include="Js\audely_overlay_preload.js" LogicalName="ViiCord.Js.audely_overlay_preload.js" />
+    <EmbeddedResource Include="Js\viicord_runtime_loader.js" LogicalName="ViiCord.Js.viicord_runtime_loader.js" />
+    <EmbeddedResource Include="Js\viicord_overlay_preload.js" LogicalName="ViiCord.Js.viicord_overlay_preload.js" />
   </ItemGroup>
 
 </Project>

@@ -15,10 +15,10 @@ namespace ViiCord.Services;
 /// </summary>
 public static class DiscordService
 {
-    // Legacy Audely compatibility : ces marqueurs sont déjà écrits dans les fichiers de Discord des installations
+    // Legacy ViiCord compatibility : ces marqueurs sont déjà écrits dans les fichiers de Discord des installations
     // existantes ; les changer empêcherait de reconnaître (et de retirer) un hook déjà posé.
-    public const string HookMarker = "AUDELY_RUNTIME_HOOK_BEGIN";
-    public const string OverlayMarker = "AUDELY_OVERLAY_BRIDGE_V1";
+    public const string HookMarker = "VIICORD_RUNTIME_HOOK_BEGIN";
+    public const string OverlayMarker = "VIICORD_OVERLAY_BRIDGE_V1";
 
     private static readonly Regex ExternalModRegex = new(
         "betterdiscord|vencord|equicord|moonlight|shelter",
@@ -110,7 +110,7 @@ public static class DiscordService
             string moduleDir = Path.Combine(wrapper.FullName, "discord_overlay2");
             string host = Path.Combine(moduleDir, "host.js");
             string original = Path.Combine(moduleDir, "overlayPreload.js");
-            string preload = Path.Combine(moduleDir, "audely_overlay_preload.js");
+            string preload = Path.Combine(moduleDir, "viicord_overlay_preload.js");
 
             if (File.Exists(host) && File.Exists(original))
                 return new OverlayInfo(wrapper.FullName, moduleDir, host, original, preload);

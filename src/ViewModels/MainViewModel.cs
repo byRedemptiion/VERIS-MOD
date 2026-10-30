@@ -1186,17 +1186,17 @@ public sealed class MainViewModel : ObservableObject
 
     private static readonly (string Card, string Sound)[] ViirusVoice =
     {
-        ("message1",     "builtin:veris_message"),
-        ("user_join",    "builtin:veris_join"),
-        ("user_leave",   "builtin:veris_leave"),
-        ("call_calling", "builtin:veris_calling"),
-        ("reconnect",    "builtin:veris_reconnect"),
-        ("disconnect",   "builtin:veris_disconnect"),
-        ("mute",         "builtin:veris_mute"),
-        ("unmute",       "builtin:veris_unmute"),
-        ("deafen",       "builtin:veris_deafen"),
-        ("undeafen",     "builtin:veris_undeafen"),
-        ("call_ringing", "builtin:veris_ringing"),
+        ("message1",     "builtin:viirus_message"),
+        ("user_join",    "builtin:viirus_join"),
+        ("user_leave",   "builtin:viirus_leave"),
+        ("call_calling", "builtin:viirus_calling"),
+        ("reconnect",    "builtin:viirus_reconnect"),
+        ("disconnect",   "builtin:viirus_disconnect"),
+        ("mute",         "builtin:viirus_mute"),
+        ("unmute",       "builtin:viirus_unmute"),
+        ("deafen",       "builtin:viirus_deafen"),
+        ("undeafen",     "builtin:viirus_undeafen"),
+        ("call_ringing", "builtin:viirus_ringing"),
     };
 
     /// <summary>Applique la voix VIIRUS aux 11 événements d'un seul clic.</summary>

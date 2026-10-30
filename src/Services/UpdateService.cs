@@ -20,7 +20,7 @@ public sealed record UpdateInfo(string Version, string Url, string Sha256, strin
 public static class UpdateService
 {
     public const string LatestUrl =
-        "https://github.com/byRedemptiion/VERIS-MOD/releases/latest/download/latest.json";
+        "https://github.com/byRedemptiion/viiCord/releases/latest/download/latest.json";
 
     private static readonly HttpClient Http = CreateClient();
 
@@ -62,7 +62,7 @@ public static class UpdateService
         if (!IsNewer(version, AppInfo.Version)) return null;
         if (string.IsNullOrWhiteSpace(url) || string.IsNullOrWhiteSpace(sha))
             throw new InvalidDataException("latest.json incomplet (url ou sha256 manquant).");
-        if (!url.StartsWith("https://github.com/byRedemptiion/VERIS-MOD/", StringComparison.OrdinalIgnoreCase))
+        if (!url.StartsWith("https://github.com/byRedemptiion/viiCord/", StringComparison.OrdinalIgnoreCase))
             throw new InvalidDataException("Adresse de téléchargement inattendue.");
 
         return new UpdateInfo(version, url, sha, notes);
