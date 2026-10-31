@@ -1,1 +1,1 @@
-Les bannières ViiCord sont mieux détourées : le fond sombre autour du logo n'apparaît plus dans l'en-tête.
+Nouvelle icône ViiCord : le logo dans un cadre noir et or en forme d'onde sonore, bien plus propre sur le Bureau et dans la barre des tâches. Bannières mieux détourées.
