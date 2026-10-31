@@ -1,1 +1,1 @@
-Nouveau logo et nouvelle icône ViiCord. La bannière en haut à gauche change de couleur avec l'ambiance choisie, et Premium noir et or passe en premier dans la liste (et devient l'ambiance par défaut des nouvelles installations).
+Les bannières ViiCord sont mieux détourées : le fond sombre autour du logo n'apparaît plus dans l'en-tête.

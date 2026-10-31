@@ -34,7 +34,8 @@ public partial class AboutWindow : Window
 
     private static readonly HistoryItem[] History =
     {
-        new(AppInfo.Version, "Nouveau logo et icône. Une bannière ViiCord aux couleurs de chaque ambiance. Premium noir et or passe en premier."),
+        new(AppInfo.Version, "Bannières mieux détourées : le fond sombre autour du logo disparaît."),
+        new("2.0.1", "Nouveau logo et icône. Une bannière ViiCord aux couleurs de chaque ambiance. Premium noir et or passe en premier."),
         new("2.0.0", "Nouveau nom : ViiCord, avec VIIRUS pour mascotte. Dossier des réglages migré vers %APPDATA%\\ViiCord sans rien perdre. Page À propos détaillée."),
         new("1.9.1", "Bouton Aléatoire sur chaque page du carrousel."),
         new("1.9.0", "Interface carrousel : une grande carte, on tourne les catégories. Partage de profils (export / import)."),
