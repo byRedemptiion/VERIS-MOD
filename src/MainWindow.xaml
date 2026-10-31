@@ -139,24 +139,21 @@
         <Border Grid.ColumnSpan="3" Background="{DynamicResource PanelBrush}" CornerRadius="17,17,0,0"/>
 
         <StackPanel Orientation="Horizontal" Margin="16,0,0,0" VerticalAlignment="Center">
-          <StackPanel Margin="2,0,0,0" VerticalAlignment="Center">
+          <Image Source="pack://application:,,,/Assets/ViiCord_Wordmark.png" Height="50"
+                 RenderOptions.BitmapScalingMode="HighQuality" VerticalAlignment="Center"
+                 ToolTip="ViiCord — byRedemptiion"/>
+          <StackPanel Margin="10,0,0,0" VerticalAlignment="Center">
             <StackPanel Orientation="Horizontal">
-              <TextBlock FontFamily="{DynamicResource DisplayFont}"
-                         FontSize="{DynamicResource WordSize}" FontWeight="ExtraBold"
-                         VerticalAlignment="Center">
-                <Run Text="Vii"/><Run Text="Cord" Foreground="{DynamicResource Accent2Brush}"/>
-              </TextBlock>
               <TextBlock Text="{Binding VersionText}" FontSize="11"
-                         Foreground="{DynamicResource MutedBrush}"
-                         VerticalAlignment="Center" Margin="9,3,0,0"/>
+                         Foreground="{DynamicResource MutedBrush}" VerticalAlignment="Center"/>
               <Border Visibility="{Binding HasBadge, Converter={StaticResource BoolToVis}}"
                       Background="{DynamicResource AccentFillBrush}" CornerRadius="9"
-                      Padding="8,2" Margin="9,3,0,0" VerticalAlignment="Center">
+                      Padding="8,2" Margin="9,0,0,0" VerticalAlignment="Center">
                 <TextBlock Text="{Binding Badge}" FontSize="10" FontWeight="ExtraBold"
                            Foreground="{DynamicResource OnAccentBrush}"/>
               </Border>
             </StackPanel>
-            <TextBlock Text="{Binding ThemeName, StringFormat='byRedemptiion · ambiance {0}'}"
+            <TextBlock Text="{Binding ThemeName, StringFormat='ambiance {0}'}"
                        FontStyle="Italic" FontSize="11" Foreground="{DynamicResource MutedBrush}"/>
           </StackPanel>
         </StackPanel>
