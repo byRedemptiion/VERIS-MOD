@@ -139,9 +139,12 @@
         <Border Grid.ColumnSpan="3" Background="{DynamicResource PanelBrush}" CornerRadius="17,17,0,0"/>
 
         <StackPanel Orientation="Horizontal" Margin="16,0,0,0" VerticalAlignment="Center">
-          <Image Source="pack://application:,,,/Assets/ViiCord_Wordmark.png" Height="50"
-                 RenderOptions.BitmapScalingMode="HighQuality" VerticalAlignment="Center"
-                 ToolTip="ViiCord — byRedemptiion"/>
+          <Border Background="{DynamicResource BannerChipBrush}" CornerRadius="10" Padding="6,0"
+                  VerticalAlignment="Center">
+            <Image Source="{DynamicResource BannerImage}" Height="58"
+                   RenderOptions.BitmapScalingMode="HighQuality" VerticalAlignment="Center"
+                   ToolTip="ViiCord — byRedemptiion"/>
+          </Border>
           <StackPanel Margin="10,0,0,0" VerticalAlignment="Center">
             <StackPanel Orientation="Horizontal">
               <TextBlock Text="{Binding VersionText}" FontSize="11"

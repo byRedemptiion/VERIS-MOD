@@ -35,10 +35,17 @@ public sealed record ThemePalette(
 /// </summary>
 public static class ThemeService
 {
-    public const string DefaultKey = "violet";
+    public const string DefaultKey = "premium";
 
     public static readonly IReadOnlyList<ThemePalette> All = new[]
     {
+        new ThemePalette("premium", "Premium noir et or",
+            Bg: "#030303", Panel: "#0A0908", Card: "#0F0D0A", Field: "#080706", Line: "#2B2415",
+            Text: "#F8F2E3", Muted: "#A89D80", Accent: "#D4AF37", Accent2: "#EBCB7A",
+            OnAccent: "#1A1300", Ok: "#4FD79A",
+            AccentGradient: new[] { "#F5DC8C", "#D4AF37", "#B8921F" },
+            Badge: "PREMIUM", Serif: true),
+
         new ThemePalette("violet", "Violet nuit",
             Bg: "#070A10", Panel: "#0D121B", Card: "#111826", Field: "#0A0F18", Line: "#222B3A",
             Text: "#F4F1FF", Muted: "#98A1B3", Accent: "#7C4DFF", Accent2: "#C4A5FF",
@@ -69,12 +76,6 @@ public static class ThemeService
             Text: "#151927", Muted: "#636C80", Accent: "#6D4AE8", Accent2: "#5B3FD0",
             OnAccent: "#FFFFFF", Ok: "#0E9F6E"),
 
-        new ThemePalette("premium", "Premium noir et or",
-            Bg: "#030303", Panel: "#0A0908", Card: "#0F0D0A", Field: "#080706", Line: "#2B2415",
-            Text: "#F8F2E3", Muted: "#A89D80", Accent: "#D4AF37", Accent2: "#EBCB7A",
-            OnAccent: "#1A1300", Ok: "#4FD79A",
-            AccentGradient: new[] { "#F5DC8C", "#D4AF37", "#B8921F" },
-            Badge: "PREMIUM", Serif: true),
     };
 
     public static ThemePalette Current { get; private set; } = All[0];
@@ -99,7 +100,7 @@ public static class ThemeService
         Color c = ToColor(hex);
         Color light = Mix(c, Colors.White, 0.45);
         double luminance = (0.299 * c.R + 0.587 * c.G + 0.114 * c.B) / 255.0;
-        return All[0] with
+        return All.First(t => t.Key == "violet") with
         {
             Key = "custom",
             Name = "Couleur perso",
@@ -163,6 +164,18 @@ public static class ThemeService
         res["WordSize"] = p.Serif ? 27.0 : 22.0;
         res["H1Size"] = p.Serif ? 30.0 : 24.0;
         res["H2Size"] = p.Serif ? 24.0 : 19.0;
+
+        // Bannière ViiCord de la couleur du thème ; sur un thème clair, elle repose sur une pastille sombre.
+        string bannerKey = p.Key == "custom" ? "violet" : p.Key;
+        try
+        {
+            var bmp = new System.Windows.Media.Imaging.BitmapImage(
+                new Uri($"pack://application:,,,/Assets/Banners/viicord_{bannerKey}.png", UriKind.Absolute));
+            bmp.Freeze();
+            res["BannerImage"] = bmp;
+        }
+        catch { }
+        res["BannerChipBrush"] = lightBase ? Solid("#0B0D14") : Brushes.Transparent;
 
         Current = p;
         Changed?.Invoke();

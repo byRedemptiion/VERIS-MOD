@@ -78,7 +78,7 @@ public sealed class AppSettings
     public bool ActivationDeclined { get; set; }
 
     /// <summary>Clé de l'ambiance de couleur (violet, ocean, emerald, sakura, amber, light, premium).</summary>
-    public string Theme { get; set; } = "violet";
+    public string Theme { get; set; } = "premium";
 
     /// <summary>Couleur d'accent de l'ambiance « Couleur perso » (#RRGGBB).</summary>
     public string CustomAccent { get; set; } = "#7C4DFF";

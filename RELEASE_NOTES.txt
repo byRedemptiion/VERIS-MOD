@@ -1,1 +1,1 @@
-VERIS MOD devient ViiCord, et sa mascotte VERIS devient VIIRUS. Tes réglages, sons et profils sont conservés (dossier migré vers %APPDATA%\ViiCord). Nouvelle page À propos détaillée. Les profils partagés ont maintenant l'extension .viicord (les anciens .veris restent importables). Après la mise à jour, relance Discord une fois.
+Nouveau logo et nouvelle icône ViiCord. La bannière en haut à gauche change de couleur avec l'ambiance choisie, et Premium noir et or passe en premier dans la liste (et devient l'ambiance par défaut des nouvelles installations).

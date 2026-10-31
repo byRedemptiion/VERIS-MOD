@@ -13,9 +13,9 @@
     <ApplicationIcon>Assets\ViiCord.ico</ApplicationIcon>
     <ApplicationManifest>app.manifest</ApplicationManifest>
 
-    <Version>2.0.0</Version>
-    <AssemblyVersion>2.0.0.0</AssemblyVersion>
-    <FileVersion>2.0.0.0</FileVersion>
+    <Version>2.0.1</Version>
+    <AssemblyVersion>2.0.1.0</AssemblyVersion>
+    <FileVersion>2.0.1.0</FileVersion>
     <Authors>byRedemptiion</Authors>
     <Product>ViiCord</Product>
     <Description>ViiCord — personnalisation des sons Discord</Description>
@@ -38,6 +38,7 @@
     <Resource Include="Assets\VIIRUS.png" />
     <Resource Include="Assets\ViiCord_Logo.png" />
     <Resource Include="Assets\ViiCord_Wordmark.png" />
+    <Resource Include="Assets\Banners\*.png" />
     <Resource Include="Assets\Fonts\*.ttf" />
 
     <!-- JS du hook : copié tel quel depuis V1.3.7, embarqué dans l'exécutable -->
